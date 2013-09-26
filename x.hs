@@ -7,6 +7,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -21,9 +22,11 @@ import Control.Monad.Fix
 import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
 import Data.Int
+import Data.Maybe (fromJust)
 import Data.String
 import Data.Void
 import Data.Word
+import Foreign.Ptr (Ptr)
 import GHC.TypeLits
 import qualified LLVM.General as LLVM
 import qualified LLVM.General.AST as AST
@@ -46,9 +49,9 @@ type instance 'Mutable  :<+>: 'Mutable  = 'Mutable
 type ValueContext a = RWS () [AST.Named AST.Instruction] Word a
 
 data Value (const :: Constness) (a :: *) where
-  ValueMutable     :: Value 'Constant a          -> Value 'Mutable a
-  ValueOperand     :: ValueContext (AST.Operand) -> Value 'Mutable a
-  ValueConstant    :: Constant.Constant          -> Value 'Constant a
+  ValueMutable     :: Value 'Constant a        -> Value 'Mutable a
+  ValueOperand     :: ValueContext AST.Operand -> Value 'Mutable a
+  ValueConstant    :: Constant.Constant        -> Value 'Constant a
 
 mutable :: Value 'Constant a -> Value 'Mutable a
 mutable = ValueMutable
@@ -64,6 +67,7 @@ class ValueOf (a :: *) where
   type SizeOf a :: Nat
   type ElementsOf a :: Nat
   type ClassificationOf a :: Classification
+  valueType :: proxy a -> AST.Type
 
 instance ValueOf (Value 'Constant Word16) where
   type SizeOf (Value 'Constant Word16) = 2
@@ -79,6 +83,7 @@ instance ValueOf (Value 'Mutable Word8) where
   type SizeOf (Value 'Mutable Word8) = 1
   type ElementsOf (Value 'Mutable Word8) = 1
   type ClassificationOf (Value 'Mutable Word8) = IntegerClass
+  valueType _ = AST.IntegerType 8
 
 data Label = Label AST.Name
 
@@ -90,11 +95,18 @@ freshName = do
   put $! st{basicBlockFreshId = fresh + 1}
   return $ AST.UnName fresh
 
-pushInstruction :: AST.Instruction -> BasicBlock AST.Name
-pushInstruction inst = do
+pushNamedInstruction :: AST.Named AST.Instruction -> BasicBlock ()
+pushNamedInstruction inst' = do
+  st@BasicBlockState{basicBlockInstructions = inst} <- get
+  put $! st{basicBlockInstructions = inst <> [inst']}
+
+pushNamelessInstruction :: AST.Instruction -> BasicBlock ()
+pushNamelessInstruction = pushNamedInstruction . AST.Do
+
+nameAndPushInstruction :: AST.Instruction -> BasicBlock AST.Name
+nameAndPushInstruction inst' = do
   name <- freshName
-  let _ = name AST.:= inst
-  () <- error "push instruction on bb queue"
+  pushNamedInstruction $ name AST.:= inst'
   return name
 
 apply
@@ -108,14 +120,6 @@ apply f (ValueConstant x) y = apply f (ValueOperand . return $ AST.ConstantOpera
 apply f x (ValueConstant y) = apply f x (ValueOperand . return $ AST.ConstantOperand y)
 apply f (ValueMutable x) y = apply f x y
 apply f x (ValueMutable y) = apply f x y
-
--- add :: Value cx a -> Value cy a -> BasicBlock (Value (cx :<+>: cy) a)
--- add = apply $ \ x y -> do
-  -- name <- pushInstruction $ LLVM.Add False False x y []
-  -- return . ValueOperand $ LLVM.LocalReference name
-
--- foo :: Value 'Constant Integer
--- foo = ValueLiteral (sing :: Sing 4) `add` ValueLiteral (sing :: Sing 5)
 
 newtype Module a = Module{runModule :: State ModuleState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState ModuleState)
@@ -138,7 +142,7 @@ newtype BasicBlock a = BasicBlock{runBasicBlock :: State BasicBlockState a}
 data BasicBlockState = BasicBlockState
   { basicBlockName         :: AST.Name
   , basicBlockInstructions :: [AST.Named AST.Instruction]
-  , basicBlockTerminator   :: Maybe AST.Terminator
+  , basicBlockTerminator   :: Maybe (AST.Named AST.Terminator)
   , basicBlockFreshId      :: {-# UNPACK #-} !Word
   } deriving (Show)
 
@@ -246,14 +250,18 @@ asOp (ValueOperand x) = do
   put $! st{basicBlockFreshId = fresh', basicBlockInstructions = inst <> inst'}
   return x'
 
+asOp (ValueConstant x) =
+  return $ AST.ConstantOperand x
+
+asOp (ValueMutable x) = asOp x
+
 ret :: ValueOf (Value const a) => Value const a -> BasicBlock (Terminator (Value const a))
 ret x = do
-  st <- get
   -- name the value, emitting instructions as necessary
   x' <- asOp x
-  -- set the bb terminator... should we check that it is still Nothing?
-  put $! st{basicBlockTerminator = Just (AST.Ret (Just x') [])}
-  return $ Terminator x
+  st <- get
+  put $! st{basicBlockTerminator = Just (AST.Do (AST.Ret (Just x') []))}
+  return $ Terminator x -- (ValueOperand (return x'))
 
 ret_ :: BasicBlock (Terminator ())
 ret_ = undefined
@@ -281,11 +289,25 @@ undef = undefined
 phi :: ValueOf (Value const a) => [(Value const a, Label)] -> BasicBlock (Value const a)
 phi = undefined
 
-class Alloca a where
-  alloca :: BasicBlock a
+alloca :: forall const a . (ValueOf (Value 'Mutable a), SingI (ElementsOf (Value 'Mutable a))) => BasicBlock (Value 'Mutable (Ptr a))
+alloca = do
+  let ty = valueType ([] :: [Value 'Mutable a])
+      ne = fromSing (sing :: Sing (ElementsOf (Value 'Mutable a)))
+  name <- nameAndPushInstruction $ AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
+  return $! ValueOperand (return $ AST.LocalReference name)
 
-instance Alloca (Value 'Mutable Word8) where
-  alloca = undefined
+load :: Value const (Ptr a) -> BasicBlock (Value 'Mutable a)
+load x = do
+  x' <- asOp x
+  name <- nameAndPushInstruction $ AST.Load False x' Nothing 0 []
+  return $! ValueOperand (return (AST.LocalReference name))
+
+store :: Value cx (Ptr a) -> Value cy a -> BasicBlock ()
+store address value = do
+  address' <- asOp address
+  value' <- asOp value
+  _ <- pushNamedInstruction . AST.Do $ AST.Store False address' value' Nothing 0 []
+  return ()
 
 type family ResultType a :: *
 
@@ -308,14 +330,19 @@ foo =
 evalModule :: Module a -> (AST.Module, a)
 evalModule (Module a) = undefined
 
-runValue :: Value m a -> AST.Operand
-runValue (ValueOperand a) = let (x, _, _) = runRWS a () 0 in x
+evalBasicBlock :: BasicBlock (Terminator a) -> AST.BasicBlock
+evalBasicBlock bb =
+  let (_, st) = runState (runBasicBlock bb) (BasicBlockState (AST.Name "name") [] Nothing 0)
+  -- print $ ("val", a)
+  in AST.BasicBlock (basicBlockName st) (basicBlockInstructions st) (fromJust (basicBlockTerminator st))
 
 main :: IO ()
 main = do
   let val :: Value 'Mutable Word8
       val = 42 + 9
-  let (a, st) = runState (runBasicBlock (ret val)) (BasicBlockState (AST.Name "name") [] Nothing 0)
-  print $ ("val", a)
-  print $ ("st", st)
-  -- putStrLn . showPretty $ runValue val
+
+  putStrLn . showPretty . evalBasicBlock $ do
+    someLocalPtr <- alloca
+    store someLocalPtr (99 :: Value 'Constant Word8)
+    someLocal <- load someLocalPtr
+    ret $ someLocal + val
