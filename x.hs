@@ -24,6 +24,7 @@ import Control.Monad.State.Lazy
 import Data.Int
 import Data.Maybe (fromJust)
 import Data.String
+import Data.Traversable
 import Data.Void
 import Data.Word
 import Foreign.Ptr (Ptr)
@@ -278,33 +279,42 @@ namedBasicBlock :: String -> BasicBlock (Terminator a) -> FunctionDefinition ty 
 namedBasicBlock = undefined
 
 asOp :: Value const a -> BasicBlock AST.Operand
+asOp (ValueConstant x) = return $ AST.ConstantOperand x
+asOp (ValueMutable x) = asOp x
 asOp (ValueOperand x) = do
   st@BasicBlockState{basicBlockFreshId = fresh, basicBlockInstructions = inst} <- get
   let (x', fresh', inst') = runRWS x () fresh
   put $! st{basicBlockFreshId = fresh', basicBlockInstructions = inst <> inst'}
   return x'
 
-asOp (ValueConstant x) =
-  return $ AST.ConstantOperand x
-
-asOp (ValueMutable x) = asOp x
+setTerminator :: AST.Terminator -> BasicBlock ()
+setTerminator term = do
+  st <- get
+  put $! st{basicBlockTerminator = Just (AST.Do term)}
 
 ret :: ValueOf (Value const a) => Value const a -> BasicBlock (Terminator (Value const a))
-ret x = do
+ret value = do
   -- name the value, emitting instructions as necessary
-  x' <- asOp x
-  st <- get
-  put $! st{basicBlockTerminator = Just (AST.Do (AST.Ret (Just x') []))}
-  return $ Terminator x -- (ValueOperand (return x'))
+  valueOp <- asOp value
+  setTerminator $ AST.Ret (Just valueOp) []
+  -- @TODO: replace with LocalReference ?
+  return $ Terminator value
 
 ret_ :: BasicBlock (Terminator ())
-ret_ = undefined
+ret_ = do
+  setTerminator $ AST.Ret Nothing []
+  return $ Terminator ()
 
 condBr :: Value const Bool -> Label -> Label -> BasicBlock (Terminator ())
-condBr = undefined
+condBr condition (Label trueDest) (Label falseDest) = do
+  conditionOp <- asOp condition
+  setTerminator $ AST.CondBr conditionOp trueDest falseDest []
+  return $ Terminator ()
 
 br :: Label -> BasicBlock (Terminator ())
-br = undefined
+br (Label dest) = do
+  setTerminator $ AST.Br dest []
+  return $ Terminator ()
 
 switch = undefined
 
@@ -315,13 +325,26 @@ invoke = undefined
 resume = undefined
 
 unreachable :: BasicBlock (Terminator ())
-unreachable = undefined
+unreachable = do
+  setTerminator $ AST.Unreachable []
+  return $ Terminator ()
 
-undef :: ValueOf (Value const a) => BasicBlock (Value const a)
-undef = undefined
+undef :: forall const a . ValueOf (Value 'Constant a) => BasicBlock (Value 'Constant a)
+undef = do
+  let val = Constant.Undef (valueType ([] :: [Value 'Constant a]))
+  return $ ValueConstant val
 
-phi :: ValueOf (Value const a) => [(Value const a, Label)] -> BasicBlock (Value const a)
-phi = undefined
+-- @TODO: check to see if the result needs to be mutable ?
+phi :: forall const a . ValueOf (Value const a) => [(Value const a, Label)] -> BasicBlock (Value 'Mutable a)
+phi incomingValues = do
+  -- @TODO: make sure we have evaluated all of the values in the list...
+  incomingValues' <- for incomingValues $ \ (val, Label origin) -> do
+    valOp <- asOp val
+    return (valOp, origin)
+
+  let ty = valueType ([] :: [Value const a])
+  name <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
+  return $! ValueOperand (return $ AST.LocalReference name)
 
 alloca :: forall const a . (ValueOf (Value 'Mutable a), SingI (ElementsOf (Value 'Mutable a))) => BasicBlock (Value 'Mutable (Ptr a))
 alloca = do
