@@ -33,6 +33,7 @@ import GHC.TypeLits
 import qualified LLVM.General as LLVM
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
+import qualified LLVM.General.AST.Global as Global
 import qualified LLVM.General.AST.IntegerPredicate as IntegerPredicate
 import LLVM.General.PrettyPrint (showPretty)
 
@@ -194,7 +195,8 @@ newtype FunctionDefinition ty a = FunctionDefinition{runFunctionDefinition :: St
   deriving (Functor, Applicative, Monad, MonadFix, MonadState FunctionDefinitionState)
 
 data FunctionDefinitionState = FunctionDefinitionState
-  { functionDefinitionBasicBlocks ::  [AST.BasicBlock]
+  { functionDefinitionBasicBlocks :: [AST.BasicBlock]
+  , functionDefinitionFreshId     :: {-# UNPACK #-} !Word
   }
 
 newtype BasicBlock a = BasicBlock{runBasicBlock :: State BasicBlockState a}
@@ -208,9 +210,11 @@ data BasicBlockState = BasicBlockState
   } deriving (Show)
 
 data Function a
-data Globals a
 
-instance IsString (Value const String) where
+newtype Globals a = Globals{runGlobals :: State [AST.Global] a}
+  deriving (Functor, Applicative, Monad, MonadFix, MonadState [AST.Global])
+
+-- instance IsString (Value const String) where
 
 nameAndEmitInstruction2 instr =
   apply2 $ \ x y -> do
@@ -346,19 +350,42 @@ instance Num (Value 'Mutable Word64) where
 
 namedModule :: String -> Globals a -> Module a
 namedModule name body = do
-  undefined
+  let (a, defs) = runState (runGlobals body) []
+  st <- get
+  put $!  st{moduleName = name, moduleDefinitions = fmap AST.GlobalDefinition defs}
+  return a
 
 namedFunction :: String -> FunctionDefinition ty a -> Globals (Function ty, a)
-namedFunction = undefined
+namedFunction name defn = do
+  let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0}
+      (a, defSt') = runState (runFunctionDefinition defn) defnSt
+      x = AST.functionDefaults
+           { Global.basicBlocks = functionDefinitionBasicBlocks defSt'
+           , Global.name = AST.Name "give me a name"
+           , Global.returnType = AST.IntegerType 8
+           }
+  st <- get
+  put $! x:st
+  return (error "foo", a)
 
 externalFunction :: String -> Globals ty
-externalFunction = undefined
+externalFunction = error "externalFunction"
 
 basicBlock :: BasicBlock (Terminator a) -> FunctionDefinition ty (Label, a)
-basicBlock = undefined
+basicBlock bb = do
+  st@FunctionDefinitionState{functionDefinitionBasicBlocks = oldBlocks} <- get
+  let name = AST.Name "some bb name"
+      (a, newBlocks) = evalBasicBlock name (functionDefinitionFreshId st) bb
+  put st{functionDefinitionBasicBlocks = oldBlocks <> [newBlocks]}
+  return (Label name, a)
 
 namedBasicBlock :: String -> BasicBlock (Terminator a) -> FunctionDefinition ty (Label, a)
-namedBasicBlock = undefined
+namedBasicBlock name bb = do
+  let name' = AST.Name name
+  st@FunctionDefinitionState{functionDefinitionBasicBlocks = oldBlocks} <- get
+  let (a, newBlocks) = evalBasicBlock name' (functionDefinitionFreshId st) bb
+  put st{functionDefinitionBasicBlocks = oldBlocks <> [newBlocks]}
+  return (Label name', a)
 
 asOp :: Value const a -> BasicBlock AST.Operand
 asOp (ValueConstant x) = return $ AST.ConstantOperand x
@@ -462,37 +489,43 @@ store address value = do
 type family ResultType a :: *
 
 call :: Function ty -> args -> BasicBlock (ResultType ty)
-call = undefined
+call = error "call"
 
-foo =
+foo :: Module ()
+foo = do
+  let val :: Value 'Constant Word8
+      val = 42 + 9
+
   namedModule "foo" $ do
-    namedFunction "bar" $ do
+    _ <- namedFunction "bar" $ do
       rec (entryBlock, _) <- basicBlock $ do
             br secondBlock
 
           (secondBlock, eight) <- namedBasicBlock "second" $ do
-            ret $ 4 + (4 :: Value 'Constant Word16)
+            someLocalPtr <- alloca
+            store someLocalPtr (99 :: Value 'Constant Word8)
+            someLocal <- load someLocalPtr
+            ret $ someLocal + mutable (val - signum 8)
 
       -- eight
 
       return ()
 
-evalModule :: Module a -> (AST.Module, a)
-evalModule (Module a) = undefined
+    return ()
 
-evalBasicBlock :: BasicBlock (Terminator a) -> AST.BasicBlock
-evalBasicBlock bb =
-  let (_, st) = runState (runBasicBlock bb) (BasicBlockState (AST.Name "name") [] Nothing 0)
-  -- print $ ("val", a)
-  in AST.BasicBlock (basicBlockName st) (basicBlockInstructions st) (fromJust (basicBlockTerminator st))
+evalModule :: Module a -> (AST.Module, a)
+evalModule (Module a) = (m, a') where
+  m = AST.Module name Nothing Nothing defs
+  name = moduleName st'
+  defs = moduleDefinitions st'
+  st = ModuleState{moduleName = "unnamed module", moduleDefinitions = []}
+  (a', st') = runState a st
+
+evalBasicBlock :: AST.Name -> Word -> BasicBlock (Terminator a) -> (a, AST.BasicBlock)
+evalBasicBlock name fresh bb =
+  let (Terminator a, st) = runState (runBasicBlock bb) (BasicBlockState name [] Nothing fresh)
+  in (a, AST.BasicBlock (basicBlockName st) (basicBlockInstructions st) (fromJust (basicBlockTerminator st)))
 
 main :: IO ()
 main = do
-  let val :: Value 'Mutable Word8
-      val = 42 + 9
-
-  putStrLn . showPretty . evalBasicBlock $ do
-    someLocalPtr <- alloca
-    store someLocalPtr (99 :: Value 'Constant Word8)
-    someLocal <- load someLocalPtr
-    ret $ someLocal + val + (mutable (signum 8))
+  putStrLn . showPretty . fst $ evalModule foo
