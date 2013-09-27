@@ -151,39 +151,75 @@ data Globals a
 
 instance IsString (Value const String) where
 
+nameAndEmitInstruction instr =
+  apply $ \ x y -> do
+    val <- get
+    put $! val + 1
+    let name = AST.UnName val
+    tell [name AST.:= instr x y []]
+    return $ AST.LocalReference name
+
+applyConstant :: (Constant.Constant -> Constant.Constant -> Constant.Constant) -> Value 'Constant a -> Value 'Constant a -> Value 'Constant a
+applyConstant instr (ValueConstant x) (ValueConstant y) =
+  ValueConstant (instr x y)
+
 instance Num (Value 'Constant Int8) where
   fromInteger = ValueConstant . Constant.Int 8
+  abs = id
+  (+) = applyConstant (Constant.Add False False)
+  (-) = applyConstant (Constant.Sub False False)
+  (*) = applyConstant (Constant.Mul False False)
 
 instance Num (Value 'Constant Int16) where
   fromInteger = ValueConstant . Constant.Int 16
+  abs = id
+  (+) = applyConstant (Constant.Add False False)
+  (-) = applyConstant (Constant.Sub False False)
+  (*) = applyConstant (Constant.Mul False False)
 
 instance Num (Value 'Constant Int32) where
   fromInteger = ValueConstant . Constant.Int 32
+  abs = id
+  (+) = applyConstant (Constant.Add False False)
+  (-) = applyConstant (Constant.Sub False False)
+  (*) = applyConstant (Constant.Mul False False)
 
 instance Num (Value 'Constant Int64) where
   fromInteger = ValueConstant . Constant.Int 64
+  abs = id
+  (+) = applyConstant (Constant.Add False False)
+  (-) = applyConstant (Constant.Sub False False)
+  (*) = applyConstant (Constant.Mul False False)
 
 instance Num (Value 'Constant Word8) where
   fromInteger = ValueConstant . Constant.Int 8
   abs = id
-  -- ValueConstant x + ValueConstant y = ValueConstant (Constant.Add False False x y)
+  (+) = applyConstant (Constant.Add False False)
+  (-) = applyConstant (Constant.Sub False False)
+  (*) = applyConstant (Constant.Mul False False)
 
 instance Num (Value 'Constant Word16) where
   fromInteger = ValueConstant . Constant.Int 16
   abs = id
-  -- ValueConstant x + ValueConstant y = ValueConstant (Constant.Add False False x y)
+  (+) = applyConstant (Constant.Add False False)
+  (-) = applyConstant (Constant.Sub False False)
+  (*) = applyConstant (Constant.Mul False False)
 
 instance Num (Value 'Constant Word32) where
   fromInteger = ValueConstant . Constant.Int 32
   abs = id
-  -- ValueConstant x + ValueConstant y = ValueConstant (Constant.Add False False x y)
+  (+) = applyConstant (Constant.Add False False)
+  (-) = applyConstant (Constant.Sub False False)
+  (*) = applyConstant (Constant.Mul False False)
 
 instance Num (Value 'Constant Word64) where
   fromInteger = ValueConstant . Constant.Int 64
   abs = id
-  -- ValueConstant x + ValueConstant y = ValueConstant (Constant.Add False False x y)
+  (+) = applyConstant (Constant.Add False False)
+  (-) = applyConstant (Constant.Sub False False)
+  (*) = applyConstant (Constant.Mul False False)
 
-
+{-
 instance Num (Value 'Mutable Int8) where
   fromInteger = ValueMutable . fromInteger
 
@@ -195,16 +231,14 @@ instance Num (Value 'Mutable Int32) where
 
 instance Num (Value 'Mutable Int64) where
   fromInteger = ValueMutable . fromInteger
+-}
 
 instance Num (Value 'Mutable Word8) where
   fromInteger = ValueMutable . fromInteger
   abs = id
-  (+) = apply $ \ x y -> do
-          val <- get
-          put $! val + 1
-          let name = AST.UnName val
-          tell [name AST.:= AST.Add False False x y []]
-          return $ AST.LocalReference name
+  (+) = nameAndEmitInstruction (AST.Add False False)
+  (-) = nameAndEmitInstruction (AST.Sub False False)
+  (*) = nameAndEmitInstruction (AST.Mul False False)
 
 {-
 instance Num (Value 'Mutable Word16) where
@@ -306,8 +340,7 @@ store :: Value cx (Ptr a) -> Value cy a -> BasicBlock ()
 store address value = do
   address' <- asOp address
   value' <- asOp value
-  _ <- pushNamedInstruction . AST.Do $ AST.Store False address' value' Nothing 0 []
-  return ()
+  void . pushNamedInstruction . AST.Do $ AST.Store False address' value' Nothing 0 []
 
 type family ResultType a :: *
 
