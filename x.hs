@@ -5,14 +5,15 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeHoles #-}
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Main where
 
@@ -32,6 +33,7 @@ import GHC.TypeLits
 import qualified LLVM.General as LLVM
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
+import qualified LLVM.General.AST.IntegerPredicate as IntegerPredicate
 import LLVM.General.PrettyPrint (showPretty)
 
 data Constness = Constant | Mutable
@@ -62,29 +64,78 @@ instance Show (Value const a) where
   show (ValueConstant c) = show c
   show (ValueOperand  c) = show (evalRWS c () 0)
 
-data Classification = IntegerClass | FloatingPointClass | PointerClass | VectorClass | StructureClass | LabelClass | MetadataClass
+data Classification
+  = IntegerClass
+  | FloatingPointClass
+  | PointerClass
+  | VectorClass
+  | StructureClass
+  | LabelClass
+  | MetadataClass
 
 class ValueOf (a :: *) where
-  type SizeOf a :: Nat
+  type WordsOf a :: Nat
+  type BitsOf a :: Nat
+  type BitsOf a = WordsOf a * 8
   type ElementsOf a :: Nat
   type ClassificationOf a :: Classification
   valueType :: proxy a -> AST.Type
 
-instance ValueOf (Value 'Constant Word16) where
-  type SizeOf (Value 'Constant Word16) = 2
-  type ElementsOf (Value 'Constant Word16) = 1
-  type ClassificationOf (Value 'Constant Word16) = IntegerClass
-
-instance ValueOf (Value 'Constant Word8) where
-  type SizeOf (Value 'Constant Word8) = 1
-  type ElementsOf (Value 'Constant Word8) = 1
-  type ClassificationOf (Value 'Constant Word8) = IntegerClass
-
-instance ValueOf (Value 'Mutable Word8) where
-  type SizeOf (Value 'Mutable Word8) = 1
-  type ElementsOf (Value 'Mutable Word8) = 1
-  type ClassificationOf (Value 'Mutable Word8) = IntegerClass
+instance ValueOf (Value const Int8) where
+  type WordsOf (Value const Int8) = 1
+  type BitsOf (Value const Int8) = 8
+  type ElementsOf (Value const Int8) = 1
+  type ClassificationOf (Value const Int8) = IntegerClass
   valueType _ = AST.IntegerType 8
+
+instance ValueOf (Value const Int16) where
+  type WordsOf (Value const Int16) = 2
+  type BitsOf (Value const Int16) = 16
+  type ElementsOf (Value const Int16) = 1
+  type ClassificationOf (Value const Int16) = IntegerClass
+  valueType _ = AST.IntegerType 16
+
+instance ValueOf (Value const Int32) where
+  type WordsOf (Value const Int32) = 4
+  type BitsOf (Value const Int32) = 32
+  type ElementsOf (Value const Int32) = 1
+  type ClassificationOf (Value const Int32) = IntegerClass
+  valueType _ = AST.IntegerType 32
+
+instance ValueOf (Value const Int64) where
+  type WordsOf (Value const Int64) = 8
+  type BitsOf (Value const Int64) = 64
+  type ElementsOf (Value const Int64) = 1
+  type ClassificationOf (Value const Int64) = IntegerClass
+  valueType _ = AST.IntegerType 64
+
+instance ValueOf (Value const Word8) where
+  type WordsOf (Value const Word8) = 1
+  type BitsOf (Value const Word8) = 8
+  type ElementsOf (Value const Word8) = 1
+  type ClassificationOf (Value const Word8) = IntegerClass
+  valueType _ = AST.IntegerType 8
+
+instance ValueOf (Value const Word16) where
+  type WordsOf (Value const Word16) = 2
+  type BitsOf (Value const Word16) = 16
+  type ElementsOf (Value const Word16) = 1
+  type ClassificationOf (Value const Word16) = IntegerClass
+  valueType _ = AST.IntegerType 16
+
+instance ValueOf (Value const Word32) where
+  type WordsOf (Value const Word32) = 4
+  type BitsOf (Value const Word32) = 32
+  type ElementsOf (Value const Word32) = 1
+  type ClassificationOf (Value const Word32) = IntegerClass
+  valueType _ = AST.IntegerType 32
+
+instance ValueOf (Value const Word64) where
+  type WordsOf (Value const Word64) = 8
+  type BitsOf (Value const Word64) = 64
+  type ElementsOf (Value const Word64) = 1
+  type ClassificationOf (Value const Word64) = IntegerClass
+  valueType _ = AST.IntegerType 64
 
 data Label = Label AST.Name
 
@@ -112,15 +163,24 @@ nameAndPushInstruction inst' = do
 
 apply
   -- :: (cx :<+>: cx) ~ 'Mutable
+  :: (AST.Operand -> ValueContext AST.Operand)
+  -> Value const x
+  -> Value 'Mutable a
+apply f (ValueOperand x)  = ValueOperand (x >>= f)
+apply f (ValueConstant x) = apply f (ValueOperand . return $ AST.ConstantOperand x)
+apply f (ValueMutable x)  = apply f x
+
+apply2
+  -- :: (cx :<+>: cx) ~ 'Mutable
   :: (AST.Operand -> AST.Operand -> ValueContext AST.Operand)
   -> Value cx x
   -> Value cy y
   -> Value 'Mutable a
-apply f (ValueOperand x) (ValueOperand y) = ValueOperand $ x >>= \ op1 -> y >>= \ op2 -> f op1 op2
-apply f (ValueConstant x) y = apply f (ValueOperand . return $ AST.ConstantOperand x) y
-apply f x (ValueConstant y) = apply f x (ValueOperand . return $ AST.ConstantOperand y)
-apply f (ValueMutable x) y = apply f x y
-apply f x (ValueMutable y) = apply f x y
+apply2 f (ValueOperand x) (ValueOperand y) = ValueOperand $ x >>= \ op1 -> y >>= \ op2 -> f op1 op2
+apply2 f (ValueConstant x) y = apply2 f (ValueOperand . return $ AST.ConstantOperand x) y
+apply2 f x (ValueConstant y) = apply2 f x (ValueOperand . return $ AST.ConstantOperand y)
+apply2 f (ValueMutable x) y  = apply2 f x y
+apply2 f x (ValueMutable y)  = apply2 f x y
 
 newtype Module a = Module{runModule :: State ModuleState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState ModuleState)
@@ -152,73 +212,95 @@ data Globals a
 
 instance IsString (Value const String) where
 
-nameAndEmitInstruction instr =
-  apply $ \ x y -> do
+nameAndEmitInstruction2 instr =
+  apply2 $ \ x y -> do
     val <- get
     put $! val + 1
     let name = AST.UnName val
     tell [name AST.:= instr x y []]
     return $ AST.LocalReference name
 
-applyConstant :: (Constant.Constant -> Constant.Constant -> Constant.Constant) -> Value 'Constant a -> Value 'Constant a -> Value 'Constant a
-applyConstant instr (ValueConstant x) (ValueConstant y) =
+applyConstant2 :: (Constant.Constant -> Constant.Constant -> Constant.Constant) -> Value 'Constant a -> Value 'Constant a -> Value 'Constant a
+applyConstant2 instr (ValueConstant x) (ValueConstant y) =
   ValueConstant (instr x y)
+
+signumSignedConst :: forall a . (SingI (BitsOf (Value 'Constant a)), ValueOf (Value 'Constant a)) => Value 'Constant a -> Value 'Constant a
+signumSignedConst (ValueConstant x) = ValueConstant ig where
+  bits = fromIntegral (fromSing (sing :: Sing (BitsOf (Value 'Constant a))))
+  ig = Constant.Select gt (Constant.Int bits   1 ) il
+  il = Constant.Select lt (Constant.Int bits (-1)) (Constant.Int bits 0)
+  gt = Constant.ICmp IntegerPredicate.SGT x (Constant.Int bits 0)
+  lt = Constant.ICmp IntegerPredicate.SLT x (Constant.Int bits 0)
+
+signumUnsignedConst :: forall a . (SingI (BitsOf (Value 'Constant a)), ValueOf (Value 'Constant a)) => Value 'Constant a -> Value 'Constant a
+signumUnsignedConst (ValueConstant x) = ValueConstant ig where
+  bits = fromIntegral (fromSing (sing :: Sing (BitsOf (Value 'Constant a))))
+  ig = Constant.Select gt (Constant.Int bits 1) (Constant.Int bits 0)
+  gt = Constant.ICmp IntegerPredicate.UGT x (Constant.Int bits 0)
 
 instance Num (Value 'Constant Int8) where
   fromInteger = ValueConstant . Constant.Int 8
   abs = id
-  (+) = applyConstant (Constant.Add False False)
-  (-) = applyConstant (Constant.Sub False False)
-  (*) = applyConstant (Constant.Mul False False)
+  (+) = applyConstant2 (Constant.Add False False)
+  (-) = applyConstant2 (Constant.Sub False False)
+  (*) = applyConstant2 (Constant.Mul False False)
+  signum = signumSignedConst
 
 instance Num (Value 'Constant Int16) where
   fromInteger = ValueConstant . Constant.Int 16
   abs = id
-  (+) = applyConstant (Constant.Add False False)
-  (-) = applyConstant (Constant.Sub False False)
-  (*) = applyConstant (Constant.Mul False False)
+  (+) = applyConstant2 (Constant.Add False False)
+  (-) = applyConstant2 (Constant.Sub False False)
+  (*) = applyConstant2 (Constant.Mul False False)
+  signum = signumSignedConst
 
 instance Num (Value 'Constant Int32) where
   fromInteger = ValueConstant . Constant.Int 32
   abs = id
-  (+) = applyConstant (Constant.Add False False)
-  (-) = applyConstant (Constant.Sub False False)
-  (*) = applyConstant (Constant.Mul False False)
+  (+) = applyConstant2 (Constant.Add False False)
+  (-) = applyConstant2 (Constant.Sub False False)
+  (*) = applyConstant2 (Constant.Mul False False)
+  signum = signumSignedConst
 
 instance Num (Value 'Constant Int64) where
   fromInteger = ValueConstant . Constant.Int 64
   abs = id
-  (+) = applyConstant (Constant.Add False False)
-  (-) = applyConstant (Constant.Sub False False)
-  (*) = applyConstant (Constant.Mul False False)
+  (+) = applyConstant2 (Constant.Add False False)
+  (-) = applyConstant2 (Constant.Sub False False)
+  (*) = applyConstant2 (Constant.Mul False False)
+  signum = signumSignedConst
 
 instance Num (Value 'Constant Word8) where
   fromInteger = ValueConstant . Constant.Int 8
   abs = id
-  (+) = applyConstant (Constant.Add False False)
-  (-) = applyConstant (Constant.Sub False False)
-  (*) = applyConstant (Constant.Mul False False)
+  (+) = applyConstant2 (Constant.Add False False)
+  (-) = applyConstant2 (Constant.Sub False False)
+  (*) = applyConstant2 (Constant.Mul False False)
+  signum = signumUnsignedConst
 
 instance Num (Value 'Constant Word16) where
   fromInteger = ValueConstant . Constant.Int 16
   abs = id
-  (+) = applyConstant (Constant.Add False False)
-  (-) = applyConstant (Constant.Sub False False)
-  (*) = applyConstant (Constant.Mul False False)
+  (+) = applyConstant2 (Constant.Add False False)
+  (-) = applyConstant2 (Constant.Sub False False)
+  (*) = applyConstant2 (Constant.Mul False False)
+  signum = signumUnsignedConst
 
 instance Num (Value 'Constant Word32) where
   fromInteger = ValueConstant . Constant.Int 32
   abs = id
-  (+) = applyConstant (Constant.Add False False)
-  (-) = applyConstant (Constant.Sub False False)
-  (*) = applyConstant (Constant.Mul False False)
+  (+) = applyConstant2 (Constant.Add False False)
+  (-) = applyConstant2 (Constant.Sub False False)
+  (*) = applyConstant2 (Constant.Mul False False)
+  signum = signumUnsignedConst
 
 instance Num (Value 'Constant Word64) where
   fromInteger = ValueConstant . Constant.Int 64
   abs = id
-  (+) = applyConstant (Constant.Add False False)
-  (-) = applyConstant (Constant.Sub False False)
-  (*) = applyConstant (Constant.Mul False False)
+  (+) = applyConstant2 (Constant.Add False False)
+  (-) = applyConstant2 (Constant.Sub False False)
+  (*) = applyConstant2 (Constant.Mul False False)
+  signum = signumUnsignedConst
 
 {-
 instance Num (Value 'Mutable Int8) where
@@ -237,9 +319,9 @@ instance Num (Value 'Mutable Int64) where
 instance Num (Value 'Mutable Word8) where
   fromInteger = ValueMutable . fromInteger
   abs = id
-  (+) = nameAndEmitInstruction (AST.Add False False)
-  (-) = nameAndEmitInstruction (AST.Sub False False)
-  (*) = nameAndEmitInstruction (AST.Mul False False)
+  (+) = nameAndEmitInstruction2 (AST.Add False False)
+  (-) = nameAndEmitInstruction2 (AST.Sub False False)
+  (*) = nameAndEmitInstruction2 (AST.Mul False False)
 
 {-
 instance Num (Value 'Mutable Word16) where
@@ -316,7 +398,18 @@ br (Label dest) = do
   setTerminator $ AST.Br dest []
   return $ Terminator ()
 
-switch = undefined
+switch
+  :: (ValueOf (Value const a),     ClassificationOf (Value const a)     ~ IntegerClass,
+      ValueOf (Value 'Constant a), ClassificationOf (Value 'Constant a) ~ IntegerClass)
+  => Value const a
+  -> Label -- default
+  -> [(Value 'Constant a, Label)]
+  -> BasicBlock (Terminator ())
+switch value (Label defaultDest) dests = do
+  valueOp <- asOp value
+  let dests' = [(val, dest) | (ValueConstant val, Label dest) <- dests]
+  setTerminator $ AST.Switch valueOp defaultDest dests' []
+  return $ Terminator ()
 
 indirectBr = undefined
 
@@ -363,7 +456,8 @@ store :: Value cx (Ptr a) -> Value cy a -> BasicBlock ()
 store address value = do
   address' <- asOp address
   value' <- asOp value
-  void . pushNamedInstruction . AST.Do $ AST.Store False address' value' Nothing 0 []
+  let instr = AST.Store False address' value' Nothing 0 []
+  void . pushNamedInstruction $ AST.Do instr
 
 type family ResultType a :: *
 
@@ -401,4 +495,4 @@ main = do
     someLocalPtr <- alloca
     store someLocalPtr (99 :: Value 'Constant Word8)
     someLocal <- load someLocalPtr
-    ret $ someLocal + val
+    ret $ someLocal + val + (mutable (signum 8))
