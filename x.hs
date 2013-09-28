@@ -46,7 +46,8 @@ type instance 'Constant :<+>: 'Mutable  = 'Mutable
 type instance 'Mutable  :<+>: 'Constant = 'Mutable
 type instance 'Mutable  :<+>: 'Mutable  = 'Mutable
 
-type ValueContext a = WriterT [AST.Named AST.Instruction] BasicBlock a
+newtype ValueContext a = ValueContext{runValueContext :: WriterT [AST.Named AST.Instruction] BasicBlock a}
+  deriving (Functor, Applicative, Monad, MonadFix, MonadWriter [AST.Named AST.Instruction])
 
 data Value (const :: Constness) (a :: *) where
   ValueMutable     :: Value 'Constant a        -> Value 'Mutable a
@@ -136,8 +137,7 @@ newtype Terminator a = Terminator a deriving (Show)
 class FreshName f where
   freshName :: f AST.Name
 
--- instance FreshName ValueContext where
-instance FreshName (WriterT [AST.Named AST.Instruction] BasicBlock) where
+instance FreshName ValueContext where
   freshName =
     liftBasicBlock freshName
 
@@ -206,7 +206,7 @@ newtype BasicBlock a = BasicBlock{runBasicBlock :: StateT BasicBlockState Functi
   deriving (Functor, Applicative, Monad, MonadFix, MonadState BasicBlockState)
 
 liftBasicBlock :: BasicBlock a -> ValueContext a
-liftBasicBlock = lift
+liftBasicBlock = ValueContext . lift
 
 liftFunctionDefinition :: FunctionDefinition a -> BasicBlock a
 liftFunctionDefinition = BasicBlock . lift
@@ -394,7 +394,7 @@ asOp (ValueConstant x) = return $ AST.ConstantOperand x
 asOp (ValueMutable x) = asOp x
 asOp (ValueOperand x) = do
   st@BasicBlockState{basicBlockInstructions = inst} <- get
-  (x', inst') <- runWriterT x
+  (x', inst') <- runWriterT $ runValueContext x
   put $! st{basicBlockInstructions = inst <> inst'}
   return x'
 
