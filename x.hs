@@ -23,6 +23,7 @@ import Control.Monad.Fix
 import Control.Monad.State.Lazy
 import Control.Monad.Writer.Lazy
 import Data.Int
+import Data.List as List
 import Data.Maybe (fromJust)
 import Data.String
 import Data.Traversable
@@ -388,9 +389,11 @@ basicBlock bb = do
 
 namedBasicBlock :: AST.Name -> BasicBlock (Terminator ()) -> FunctionDefinition Label
 namedBasicBlock name bb = do
+  ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = originalBlocks} <- get
   (_, newBlock) <- evalBasicBlock name bb
-  ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = oldBlocks} <- get
-  put st{functionDefinitionBasicBlocks = oldBlocks <> [newBlock]}
+  ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = extraBlocks} <- get
+  -- splice in the new block before any blocks defined while lifting
+  put st{functionDefinitionBasicBlocks = originalBlocks <> (newBlock:List.drop (List.length originalBlocks) extraBlocks)}
   return (Label name)
 
 asOp :: Value const a -> BasicBlock AST.Operand
