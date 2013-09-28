@@ -491,6 +491,16 @@ type family ResultType a :: *
 call :: Function ty -> args -> BasicBlock (ResultType ty)
 call = error "call"
 
+-- select :: Value cx Bool -> Value cy a -> Value cz a -> BasicBlock (Value (cy :<+>: cz) a)
+select :: Value cx Bool -> Value cy a -> Value cz a -> BasicBlock (Value 'Mutable a)
+select condition trueValue falseValue = do
+  conditionOp <- asOp condition
+  trueValueOp <- asOp trueValue
+  falseValueOp <- asOp falseValue
+  let instr = AST.Select conditionOp trueValueOp falseValueOp []
+  name <- nameAndPushInstruction instr
+  return $! ValueOperand (return $ AST.LocalReference name)
+
 foo :: Module ()
 foo = do
   let val :: Value 'Constant Word8
