@@ -25,13 +25,10 @@ import Control.Monad.Writer.Lazy
 import Data.Int
 import Data.List as List
 import Data.Maybe (fromJust)
-import Data.String
 import Data.Traversable
-import Data.Void
 import Data.Word
 import Foreign.Ptr (Ptr)
 import GHC.TypeLits
-import qualified LLVM.General as LLVM
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
 import qualified LLVM.General.AST.Global as Global
@@ -226,8 +223,27 @@ data Function a
 newtype Globals a = Globals{runGlobals :: State [AST.Global] a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState [AST.Global])
 
+evalModule :: Module a -> (AST.Module, a)
+evalModule (Module a) = (m, a') where
+  m = AST.Module name Nothing Nothing defs
+  name = moduleName st'
+  defs = moduleDefinitions st'
+  st = ModuleState{moduleName = "unnamed module", moduleDefinitions = []}
+  ~(a', st') = runState a st
+
+evalBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> FunctionDefinition (a, AST.BasicBlock)
+evalBasicBlock name bb = do
+  -- pattern match must be lazy to support the MonadFix instance
+  ~(Terminator a, st) <- runStateT (runBasicBlock bb) (BasicBlockState name [] Nothing)
+  return (a, AST.BasicBlock (basicBlockName st) (basicBlockInstructions st) (fromJust (basicBlockTerminator st)))
+
 -- instance IsString (Value const String) where
 
+nameAndEmitInstruction2
+  :: (AST.Operand -> AST.Operand -> [t] -> AST.Instruction)
+  -> Value cx x
+  -> Value cy y
+  -> Value 'Mutable a
 nameAndEmitInstruction2 instr =
   apply2 $ \ x y -> do
     name <- freshName
@@ -392,7 +408,7 @@ basicBlock bb = do
 
 namedBasicBlock :: AST.Name -> BasicBlock (Terminator ()) -> FunctionDefinition Label
 namedBasicBlock name bb = do
-  ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = originalBlocks} <- get
+  ~FunctionDefinitionState{functionDefinitionBasicBlocks = originalBlocks} <- get
   (_, newBlock) <- evalBasicBlock name bb
   ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = extraBlocks} <- get
   -- splice in the new block before any blocks defined while lifting
@@ -461,7 +477,7 @@ unreachable = do
   setTerminator $ AST.Unreachable []
   return $ Terminator ()
 
-undef :: forall const a . ValueOf (Value 'Constant a) => BasicBlock (Value 'Constant a)
+undef :: forall a . ValueOf (Value 'Constant a) => BasicBlock (Value 'Constant a)
 undef = do
   let val = Constant.Undef $ valueType ([] :: [Value 'Constant a])
   return $ ValueConstant val
@@ -477,7 +493,7 @@ phi incomingValues = do
   name <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
   return $! ValueOperand (return $ AST.LocalReference name)
 
-alloca :: forall const a . (ValueOf (Value 'Mutable a), SingI (ElementsOf (Value 'Mutable a))) => BasicBlock (Value 'Mutable (Ptr a))
+alloca :: forall a . (ValueOf (Value 'Mutable a), SingI (ElementsOf (Value 'Mutable a))) => BasicBlock (Value 'Mutable (Ptr a))
 alloca = do
   let ty = valueType ([] :: [Value 'Mutable a])
       ne = fromSing (sing :: Sing (ElementsOf (Value 'Mutable a)))
@@ -507,7 +523,12 @@ class Select (const :: Constness) where
   -- if both true and false values are constant the switch condition must also be
   -- a constant. if you want a constant condition but mutable values (for some reason...)
   -- just wrap the condition with 'mutable'
-  select :: (cx :<+>: cy) ~ const => Value const Bool -> Value cx a -> Value cy a -> BasicBlock (Value const a)
+  select
+    :: (cx :<+>: cy) ~ const
+    => Value const Bool
+    -> Value cx a
+    -> Value cy a
+    -> BasicBlock (Value const a)
 
 instance Select 'Mutable where
   select condition trueValue falseValue = do
@@ -535,7 +556,7 @@ foo = do
       val = 42 + 9
 
   namedModule "foo" $ do
-    _ <- namedFunction "bar" $ do
+    void . namedFunction "bar" $ do
       rec entryBlock <- basicBlock $ do
             br secondBlock
 
@@ -549,22 +570,6 @@ foo = do
               <*> liftFunctionDefinition (basicBlock (br entryBlock))
 
       return ()
-
-    return ()
-
-evalModule :: Module a -> (AST.Module, a)
-evalModule (Module a) = (m, a') where
-  m = AST.Module name Nothing Nothing defs
-  name = moduleName st'
-  defs = moduleDefinitions st'
-  st = ModuleState{moduleName = "unnamed module", moduleDefinitions = []}
-  ~(a', st') = runState a st
-
-evalBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> FunctionDefinition (a, AST.BasicBlock)
-evalBasicBlock name bb = do
-  -- pattern match must be lazy to support the MonadFix instance
-  ~(Terminator a, st) <- runStateT (runBasicBlock bb) (BasicBlockState name [] Nothing)
-  return (a, AST.BasicBlock (basicBlockName st) (basicBlockInstructions st) (fromJust (basicBlockTerminator st)))
 
 main :: IO ()
 main = do
