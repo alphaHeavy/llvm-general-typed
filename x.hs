@@ -356,7 +356,7 @@ instance Num (Value 'Mutable Word64) where
 
 namedModule :: String -> Globals a -> Module a
 namedModule name body = do
-  let (a, defs) = runState (runGlobals body) []
+  let ~(a, defs) = runState (runGlobals body) []
   st <- get
   put $!  st{moduleName = name, moduleDefinitions = fmap AST.GlobalDefinition defs}
   return a
@@ -364,7 +364,7 @@ namedModule name body = do
 namedFunction :: String -> FunctionDefinition a -> Globals (Function ty, a)
 namedFunction name defn = do
   let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0}
-      (a, defSt') = runState (runFunctionDefinition defn) defnSt
+      ~(a, defSt') = runState (runFunctionDefinition defn) defnSt
       x = AST.functionDefaults
            { Global.basicBlocks = functionDefinitionBasicBlocks defSt'
            , Global.name = AST.Name "give me a name"
@@ -394,7 +394,7 @@ asOp (ValueConstant x) = return $ AST.ConstantOperand x
 asOp (ValueMutable x) = asOp x
 asOp (ValueOperand x) = do
   st@BasicBlockState{basicBlockInstructions = inst} <- get
-  (x', inst') <- runWriterT $ runValueContext x
+  ~(x', inst') <- runWriterT $ runValueContext x
   put $! st{basicBlockInstructions = inst <> inst'}
   return x'
 
@@ -539,7 +539,7 @@ evalModule (Module a) = (m, a') where
   name = moduleName st'
   defs = moduleDefinitions st'
   st = ModuleState{moduleName = "unnamed module", moduleDefinitions = []}
-  (a', st') = runState a st
+  ~(a', st') = runState a st
 
 evalBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> FunctionDefinition (a, AST.BasicBlock)
 evalBasicBlock name bb = do
