@@ -248,8 +248,12 @@ signumUnsignedConst (ValueConstant x) = ValueConstant ig where
   ig = Constant.Select gt (Constant.Int bits 1) (Constant.Int bits 0)
   gt = Constant.ICmp IntegerPredicate.UGT x (Constant.Int bits 0)
 
+fromIntegerConst :: forall a . (SingI (BitsOf (Value 'Constant a)), ValueOf (Value 'Constant a)) => Integer -> Value 'Constant a
+fromIntegerConst = ValueConstant . Constant.Int bits where
+ bits = fromIntegral $ fromSing (sing :: Sing (BitsOf (Value 'Constant a)))
+
 instance Num (Value 'Constant Int8) where
-  fromInteger = ValueConstant . Constant.Int 8
+  fromInteger = fromIntegerConst
   abs = id
   (+) = applyConstant2 (Constant.Add False False)
   (-) = applyConstant2 (Constant.Sub False False)
@@ -257,7 +261,7 @@ instance Num (Value 'Constant Int8) where
   signum = signumSignedConst
 
 instance Num (Value 'Constant Int16) where
-  fromInteger = ValueConstant . Constant.Int 16
+  fromInteger = fromIntegerConst
   abs = id
   (+) = applyConstant2 (Constant.Add False False)
   (-) = applyConstant2 (Constant.Sub False False)
@@ -265,7 +269,7 @@ instance Num (Value 'Constant Int16) where
   signum = signumSignedConst
 
 instance Num (Value 'Constant Int32) where
-  fromInteger = ValueConstant . Constant.Int 32
+  fromInteger = fromIntegerConst
   abs = id
   (+) = applyConstant2 (Constant.Add False False)
   (-) = applyConstant2 (Constant.Sub False False)
@@ -273,7 +277,7 @@ instance Num (Value 'Constant Int32) where
   signum = signumSignedConst
 
 instance Num (Value 'Constant Int64) where
-  fromInteger = ValueConstant . Constant.Int 64
+  fromInteger = fromIntegerConst
   abs = id
   (+) = applyConstant2 (Constant.Add False False)
   (-) = applyConstant2 (Constant.Sub False False)
@@ -281,7 +285,7 @@ instance Num (Value 'Constant Int64) where
   signum = signumSignedConst
 
 instance Num (Value 'Constant Word8) where
-  fromInteger = ValueConstant . Constant.Int 8
+  fromInteger = fromIntegerConst
   abs = id
   (+) = applyConstant2 (Constant.Add False False)
   (-) = applyConstant2 (Constant.Sub False False)
@@ -289,7 +293,7 @@ instance Num (Value 'Constant Word8) where
   signum = signumUnsignedConst
 
 instance Num (Value 'Constant Word16) where
-  fromInteger = ValueConstant . Constant.Int 16
+  fromInteger = fromIntegerConst
   abs = id
   (+) = applyConstant2 (Constant.Add False False)
   (-) = applyConstant2 (Constant.Sub False False)
@@ -297,7 +301,7 @@ instance Num (Value 'Constant Word16) where
   signum = signumUnsignedConst
 
 instance Num (Value 'Constant Word32) where
-  fromInteger = ValueConstant . Constant.Int 32
+  fromInteger = fromIntegerConst
   abs = id
   (+) = applyConstant2 (Constant.Add False False)
   (-) = applyConstant2 (Constant.Sub False False)
@@ -305,7 +309,7 @@ instance Num (Value 'Constant Word32) where
   signum = signumUnsignedConst
 
 instance Num (Value 'Constant Word64) where
-  fromInteger = ValueConstant . Constant.Int 64
+  fromInteger = fromIntegerConst
   abs = id
   (+) = applyConstant2 (Constant.Add False False)
   (-) = applyConstant2 (Constant.Sub False False)
@@ -453,10 +457,9 @@ unreachable = do
 
 undef :: forall const a . ValueOf (Value 'Constant a) => BasicBlock (Value 'Constant a)
 undef = do
-  let val = Constant.Undef (valueType ([] :: [Value 'Constant a]))
+  let val = Constant.Undef $ valueType ([] :: [Value 'Constant a])
   return $ ValueConstant val
 
--- @TODO: check to see if the result needs to be mutable ?
 phi :: forall const a . ValueOf (Value const a) => [(Value const a, Label)] -> BasicBlock (Value 'Mutable a)
 phi incomingValues = do
   -- @TODO: make sure we have evaluated all of the values in the list...
@@ -507,7 +510,6 @@ cmp :: Value cx a -> Value cy a -> BasicBlock (Value 'Mutable Bool)
 cmp (ValueMutable x) y = cmp x y
 cmp x (ValueMutable y) = cmp x y
 cmp lhs rhs = do
-  
   return (ValueMutable (ValueConstant (Constant.Int 1 1)))
 
 foo :: Module ()
