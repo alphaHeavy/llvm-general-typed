@@ -72,62 +72,47 @@ class ValueOf (a :: *) where
   type BitsOf a :: Nat
   type BitsOf a = WordsOf a * 8
   type ElementsOf a :: Nat
+  type ElementsOf a = 1
   type ClassificationOf a :: Classification
   valueType :: proxy a -> AST.Type
 
 instance ValueOf (Value const Int8) where
   type WordsOf (Value const Int8) = 1
-  type BitsOf (Value const Int8) = 8
-  type ElementsOf (Value const Int8) = 1
   type ClassificationOf (Value const Int8) = IntegerClass
   valueType _ = AST.IntegerType 8
 
 instance ValueOf (Value const Int16) where
   type WordsOf (Value const Int16) = 2
-  type BitsOf (Value const Int16) = 16
-  type ElementsOf (Value const Int16) = 1
   type ClassificationOf (Value const Int16) = IntegerClass
   valueType _ = AST.IntegerType 16
 
 instance ValueOf (Value const Int32) where
   type WordsOf (Value const Int32) = 4
-  type BitsOf (Value const Int32) = 32
-  type ElementsOf (Value const Int32) = 1
   type ClassificationOf (Value const Int32) = IntegerClass
   valueType _ = AST.IntegerType 32
 
 instance ValueOf (Value const Int64) where
   type WordsOf (Value const Int64) = 8
-  type BitsOf (Value const Int64) = 64
-  type ElementsOf (Value const Int64) = 1
   type ClassificationOf (Value const Int64) = IntegerClass
   valueType _ = AST.IntegerType 64
 
 instance ValueOf (Value const Word8) where
   type WordsOf (Value const Word8) = 1
-  type BitsOf (Value const Word8) = 8
-  type ElementsOf (Value const Word8) = 1
   type ClassificationOf (Value const Word8) = IntegerClass
   valueType _ = AST.IntegerType 8
 
 instance ValueOf (Value const Word16) where
   type WordsOf (Value const Word16) = 2
-  type BitsOf (Value const Word16) = 16
-  type ElementsOf (Value const Word16) = 1
   type ClassificationOf (Value const Word16) = IntegerClass
   valueType _ = AST.IntegerType 16
 
 instance ValueOf (Value const Word32) where
   type WordsOf (Value const Word32) = 4
-  type BitsOf (Value const Word32) = 32
-  type ElementsOf (Value const Word32) = 1
   type ClassificationOf (Value const Word32) = IntegerClass
   valueType _ = AST.IntegerType 32
 
 instance ValueOf (Value const Word64) where
   type WordsOf (Value const Word64) = 8
-  type BitsOf (Value const Word64) = 64
-  type ElementsOf (Value const Word64) = 1
   type ClassificationOf (Value const Word64) = IntegerClass
   valueType _ = AST.IntegerType 64
 
@@ -254,7 +239,7 @@ applyConstant2 :: (Constant.Constant -> Constant.Constant -> Constant.Constant) 
 applyConstant2 instr (ValueConstant x) (ValueConstant y) =
   ValueConstant (instr x y)
 
-signumSignedConst :: forall a . (SingI (BitsOf (Value 'Constant a)), ValueOf (Value 'Constant a)) => Value 'Constant a -> Value 'Constant a
+signumSignedConst :: forall a . (SingI (BitsOf (Value 'Constant a))) => Value 'Constant a -> Value 'Constant a
 signumSignedConst (ValueConstant x) = ValueConstant ig where
   bits = fromIntegral (fromSing (sing :: Sing (BitsOf (Value 'Constant a))))
   ig = Constant.Select gt (Constant.Int bits   1 ) il
@@ -262,13 +247,13 @@ signumSignedConst (ValueConstant x) = ValueConstant ig where
   gt = Constant.ICmp IntegerPredicate.SGT x (Constant.Int bits 0)
   lt = Constant.ICmp IntegerPredicate.SLT x (Constant.Int bits 0)
 
-signumUnsignedConst :: forall a . (SingI (BitsOf (Value 'Constant a)), ValueOf (Value 'Constant a)) => Value 'Constant a -> Value 'Constant a
+signumUnsignedConst :: forall a . (SingI (BitsOf (Value 'Constant a))) => Value 'Constant a -> Value 'Constant a
 signumUnsignedConst (ValueConstant x) = ValueConstant ig where
   bits = fromIntegral (fromSing (sing :: Sing (BitsOf (Value 'Constant a))))
   ig = Constant.Select gt (Constant.Int bits 1) (Constant.Int bits 0)
   gt = Constant.ICmp IntegerPredicate.UGT x (Constant.Int bits 0)
 
-fromIntegerConst :: forall a . (SingI (BitsOf (Value 'Constant a)), ValueOf (Value 'Constant a)) => Integer -> Value 'Constant a
+fromIntegerConst :: forall a . (SingI (BitsOf (Value 'Constant a))) => Integer -> Value 'Constant a
 fromIntegerConst = ValueConstant . Constant.Int bits where
  bits = fromIntegral $ fromSing (sing :: Sing (BitsOf (Value 'Constant a)))
 
@@ -454,8 +439,8 @@ br (Label dest) = do
   return $ Terminator ()
 
 switch
-  :: (ValueOf (Value const a),     ClassificationOf (Value const a)     ~ IntegerClass,
-      ValueOf (Value 'Constant a), ClassificationOf (Value 'Constant a) ~ IntegerClass)
+  :: (ClassificationOf (Value const a)     ~ IntegerClass,
+      ClassificationOf (Value 'Constant a) ~ IntegerClass)
   => Value const a
   -> Label -- default
   -> [(Value 'Constant a, Label)]
@@ -518,6 +503,18 @@ type family ResultType a :: *
 call :: Function ty -> args -> BasicBlock (ResultType ty)
 call = error "call"
 
+class Add (const :: Constness) where
+  add :: (cx :<+>: cy) ~ const => Value cx a -> Value cy a -> BasicBlock (Value const a)
+
+instance Add 'Mutable where
+  add x y = do
+    res <- asOp $ nameAndEmitInstruction2 (AST.Add False False) x y
+    return . ValueOperand $ pure res
+
+instance Add 'Constant where
+  ValueConstant x `add` ValueConstant y =
+    return . ValueConstant $ Constant.Add False False x y
+
 class Select (const :: Constness) where
   -- the condition constness must match the result constness. this implies that
   -- if both true and false values are constant the switch condition must also be
@@ -564,9 +561,10 @@ foo = do
             someLocalPtr <- alloca
             store someLocalPtr (99 :: Value 'Constant Word8)
             someLocal <- load someLocalPtr
+            x <- val `add` someLocal
             join $ condBr
               <$> cmp someLocal (mutable 99)
-              <*> liftFunctionDefinition (basicBlock (ret $ someLocal + mutable (val - signum 8)))
+              <*> liftFunctionDefinition (basicBlock (ret $ x * someLocal + mutable (val - signum 8)))
               <*> liftFunctionDefinition (basicBlock (br entryBlock))
 
       return ()
