@@ -58,6 +58,9 @@ data Value (const :: Constness) (a :: *) where
 mutable :: Value 'Constant a -> Value 'Mutable a
 mutable = ValueMutable
 
+constant :: Value 'Constant a -> Value 'Constant a
+constant = id
+
 data Classification
   = IntegerClass
   | FloatingPointClass
@@ -135,7 +138,7 @@ data Label = Label AST.Name
 
 newtype Terminator a = Terminator a deriving (Show)
 
-class FreshName f where
+class FreshName (f :: * -> *) where
   freshName :: f AST.Name
 
 instance FreshName ValueContext where
@@ -499,15 +502,26 @@ type family ResultType a :: *
 call :: Function ty -> args -> BasicBlock (ResultType ty)
 call = error "call"
 
--- select :: Value cx Bool -> Value cy a -> Value cz a -> BasicBlock (Value (cy :<+>: cz) a)
-select :: Value cx Bool -> Value cy a -> Value cz a -> BasicBlock (Value 'Mutable a)
-select condition trueValue falseValue = do
-  conditionOp <- asOp condition
-  trueValueOp <- asOp trueValue
-  falseValueOp <- asOp falseValue
-  let instr = AST.Select conditionOp trueValueOp falseValueOp []
-  name <- nameAndPushInstruction instr
-  return $! ValueOperand (return $ AST.LocalReference name)
+class Select (const :: Constness) where
+  -- the condition constness must match the result constness. this implies that
+  -- if both true and false values are constant the switch condition must also be
+  -- a constant. if you want a constant condition but mutable values (for some reason...)
+  -- just wrap the condition with 'mutable'
+  select :: (cx :<+>: cy) ~ const => Value const Bool -> Value cx a -> Value cy a -> BasicBlock (Value const a)
+
+instance Select 'Mutable where
+  select condition trueValue falseValue = do
+    conditionOp <- asOp condition
+    trueValueOp <- asOp trueValue
+    falseValueOp <- asOp falseValue
+    let instr = AST.Select conditionOp trueValueOp falseValueOp []
+    name <- nameAndPushInstruction instr
+    return $! ValueOperand (return $ AST.LocalReference name)
+
+instance Select 'Constant where
+  select (ValueConstant condition) (ValueConstant trueValue) (ValueConstant falseValue) = do
+    let instr = Constant.Select condition trueValue falseValue
+    return $ ValueConstant instr
 
 cmp :: Value cx a -> Value cy a -> BasicBlock (Value 'Mutable Bool)
 cmp (ValueMutable x) y = cmp x y
