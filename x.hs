@@ -50,7 +50,7 @@ type instance 'Mutable  :<+>: 'Mutable  = 'Mutable
   -- ConstSelector 'Const 'Const = 'Const
   -- ConstSelector a      b      = 'Mutable
   --
-type ValueContext a = RWS () [AST.Named AST.Instruction] Word a
+type ValueContext a = RWST () [AST.Named AST.Instruction] () BasicBlock a
 
 data Value (const :: Constness) (a :: *) where
   ValueMutable     :: Value 'Constant a        -> Value 'Mutable a
@@ -142,11 +142,23 @@ data Label = Label AST.Name
 
 newtype Terminator a = Terminator a deriving (Show)
 
-freshName :: BasicBlock AST.Name
-freshName = do
-  st@BasicBlockState{basicBlockFreshId = fresh} <- get
-  put $! st{basicBlockFreshId = fresh + 1}
-  return $ AST.UnName fresh
+class FreshName f where
+  freshName :: f AST.Name
+
+-- instance FreshName ValueContext where
+instance FreshName (RWST () [AST.Named AST.Instruction] () BasicBlock) where
+  freshName =
+    liftBasicBlock freshName
+
+instance FreshName BasicBlock where
+  freshName =
+    liftFunctionDefinition freshName
+
+instance FreshName FunctionDefinition where
+  freshName = do
+    st@FunctionDefinitionState{functionDefinitionFreshId = fresh} <- get
+    put $! st{functionDefinitionFreshId = fresh + 1}
+    return $ AST.UnName fresh
 
 pushNamedInstruction :: AST.Named AST.Instruction -> BasicBlock ()
 pushNamedInstruction inst' = do
@@ -191,7 +203,7 @@ data ModuleState = ModuleState
   , moduleDefinitions :: [AST.Definition]
   }
 
-newtype FunctionDefinition ty a = FunctionDefinition{runFunctionDefinition :: State FunctionDefinitionState a}
+newtype FunctionDefinition a = FunctionDefinition{runFunctionDefinition :: State FunctionDefinitionState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState FunctionDefinitionState)
 
 data FunctionDefinitionState = FunctionDefinitionState
@@ -199,14 +211,19 @@ data FunctionDefinitionState = FunctionDefinitionState
   , functionDefinitionFreshId     :: {-# UNPACK #-} !Word
   }
 
-newtype BasicBlock a = BasicBlock{runBasicBlock :: State BasicBlockState a}
+newtype BasicBlock a = BasicBlock{runBasicBlock :: StateT BasicBlockState FunctionDefinition a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState BasicBlockState)
+
+liftBasicBlock :: BasicBlock a -> ValueContext a
+liftBasicBlock = lift
+
+liftFunctionDefinition :: FunctionDefinition a -> BasicBlock a
+liftFunctionDefinition = BasicBlock . lift
 
 data BasicBlockState = BasicBlockState
   { basicBlockName         :: AST.Name
   , basicBlockInstructions :: [AST.Named AST.Instruction]
   , basicBlockTerminator   :: Maybe (AST.Named AST.Terminator)
-  , basicBlockFreshId      :: {-# UNPACK #-} !Word
   } deriving (Show)
 
 data Function a
@@ -218,9 +235,7 @@ newtype Globals a = Globals{runGlobals :: State [AST.Global] a}
 
 nameAndEmitInstruction2 instr =
   apply2 $ \ x y -> do
-    val <- get
-    put $! val + 1
-    let name = AST.UnName val
+    name <- freshName
     tell [name AST.:= instr x y []]
     return $ AST.LocalReference name
 
@@ -355,7 +370,7 @@ namedModule name body = do
   put $!  st{moduleName = name, moduleDefinitions = fmap AST.GlobalDefinition defs}
   return a
 
-namedFunction :: String -> FunctionDefinition ty a -> Globals (Function ty, a)
+namedFunction :: String -> FunctionDefinition a -> Globals (Function ty, a)
 namedFunction name defn = do
   let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0}
       (a, defSt') = runState (runFunctionDefinition defn) defnSt
@@ -371,29 +386,25 @@ namedFunction name defn = do
 externalFunction :: String -> Globals ty
 externalFunction = error "externalFunction"
 
-basicBlock :: BasicBlock (Terminator a) -> FunctionDefinition ty (Label, a)
+basicBlock :: BasicBlock (Terminator ()) -> FunctionDefinition Label
 basicBlock bb = do
-  st@FunctionDefinitionState{functionDefinitionBasicBlocks = oldBlocks} <- get
-  let name = AST.Name "some bb name"
-      (a, newBlocks) = evalBasicBlock name (functionDefinitionFreshId st) bb
-  put st{functionDefinitionBasicBlocks = oldBlocks <> [newBlocks]}
-  return (Label name, a)
+  name <- freshName
+  namedBasicBlock name bb
 
-namedBasicBlock :: String -> BasicBlock (Terminator a) -> FunctionDefinition ty (Label, a)
+namedBasicBlock :: AST.Name -> BasicBlock (Terminator ()) -> FunctionDefinition Label
 namedBasicBlock name bb = do
-  let name' = AST.Name name
-  st@FunctionDefinitionState{functionDefinitionBasicBlocks = oldBlocks} <- get
-  let (a, newBlocks) = evalBasicBlock name' (functionDefinitionFreshId st) bb
-  put st{functionDefinitionBasicBlocks = oldBlocks <> [newBlocks]}
-  return (Label name', a)
+  (_, newBlock) <- evalBasicBlock name bb
+  ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = oldBlocks} <- get
+  put st{functionDefinitionBasicBlocks = oldBlocks <> [newBlock]}
+  return (Label name)
 
 asOp :: Value const a -> BasicBlock AST.Operand
 asOp (ValueConstant x) = return $ AST.ConstantOperand x
 asOp (ValueMutable x) = asOp x
 asOp (ValueOperand x) = do
-  st@BasicBlockState{basicBlockFreshId = fresh, basicBlockInstructions = inst} <- get
-  let (x', fresh', inst') = runRWS x () fresh
-  put $! st{basicBlockFreshId = fresh', basicBlockInstructions = inst <> inst'}
+  st@BasicBlockState{basicBlockInstructions = inst} <- get
+  (x', (), inst') <- runRWST x () ()
+  put $! st{basicBlockInstructions = inst <> inst'}
   return x'
 
 setTerminator :: AST.Terminator -> BasicBlock ()
@@ -401,13 +412,13 @@ setTerminator term = do
   st <- get
   put $! st{basicBlockTerminator = Just (AST.Do term)}
 
-ret :: ValueOf (Value const a) => Value const a -> BasicBlock (Terminator (Value const a))
+ret :: ValueOf (Value const a) => Value const a -> BasicBlock (Terminator ())
 ret value = do
   -- name the value, emitting instructions as necessary
   valueOp <- asOp value
   setTerminator $ AST.Ret (Just valueOp) []
   -- @TODO: replace with LocalReference ?
-  return $ Terminator value
+  return $ Terminator ()
 
 ret_ :: BasicBlock (Terminator ())
 ret_ = do
@@ -501,6 +512,13 @@ select condition trueValue falseValue = do
   name <- nameAndPushInstruction instr
   return $! ValueOperand (return $ AST.LocalReference name)
 
+cmp :: Value cx a -> Value cy a -> BasicBlock (Value 'Mutable Bool)
+cmp (ValueMutable x) y = cmp x y
+cmp x (ValueMutable y) = cmp x y
+cmp lhs rhs = do
+  
+  return (ValueMutable (ValueConstant (Constant.Int 1 1)))
+
 foo :: Module ()
 foo = do
   let val :: Value 'Constant Word8
@@ -508,16 +526,17 @@ foo = do
 
   namedModule "foo" $ do
     _ <- namedFunction "bar" $ do
-      rec (entryBlock, _) <- basicBlock $ do
+      rec entryBlock <- basicBlock $ do
             br secondBlock
 
-          (secondBlock, eight) <- namedBasicBlock "second" $ do
+          secondBlock <- namedBasicBlock (AST.Name "second") $ do
             someLocalPtr <- alloca
             store someLocalPtr (99 :: Value 'Constant Word8)
             someLocal <- load someLocalPtr
-            ret $ someLocal + mutable (val - signum 8)
-
-      -- eight
+            join $ condBr
+              <$> cmp someLocal (mutable 99)
+              <*> liftFunctionDefinition (basicBlock (ret $ someLocal + mutable (val - signum 8)))
+              <*> liftFunctionDefinition (basicBlock (br entryBlock))
 
       return ()
 
@@ -531,10 +550,11 @@ evalModule (Module a) = (m, a') where
   st = ModuleState{moduleName = "unnamed module", moduleDefinitions = []}
   (a', st') = runState a st
 
-evalBasicBlock :: AST.Name -> Word -> BasicBlock (Terminator a) -> (a, AST.BasicBlock)
-evalBasicBlock name fresh bb =
-  let (Terminator a, st) = runState (runBasicBlock bb) (BasicBlockState name [] Nothing fresh)
-  in (a, AST.BasicBlock (basicBlockName st) (basicBlockInstructions st) (fromJust (basicBlockTerminator st)))
+evalBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> FunctionDefinition (a, AST.BasicBlock)
+evalBasicBlock name bb = do
+  -- pattern match must be lazy to support the MonadFix instance
+  ~(Terminator a, st) <- runStateT (runBasicBlock bb) (BasicBlockState name [] Nothing)
+  return (a, AST.BasicBlock (basicBlockName st) (basicBlockInstructions st) (fromJust (basicBlockTerminator st)))
 
 main :: IO ()
 main = do
