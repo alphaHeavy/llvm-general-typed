@@ -20,8 +20,8 @@ module Main where
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
-import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
+import Control.Monad.Writer.Lazy
 import Data.Int
 import Data.Maybe (fromJust)
 import Data.String
@@ -46,11 +46,7 @@ type instance 'Constant :<+>: 'Mutable  = 'Mutable
 type instance 'Mutable  :<+>: 'Constant = 'Mutable
 type instance 'Mutable  :<+>: 'Mutable  = 'Mutable
 
--- type family ConstSelector (a :: Const) (b :: Const) :: Const where
-  -- ConstSelector 'Const 'Const = 'Const
-  -- ConstSelector a      b      = 'Mutable
-  --
-type ValueContext a = RWST () [AST.Named AST.Instruction] () BasicBlock a
+type ValueContext a = WriterT [AST.Named AST.Instruction] BasicBlock a
 
 data Value (const :: Constness) (a :: *) where
   ValueMutable     :: Value 'Constant a        -> Value 'Mutable a
@@ -59,11 +55,6 @@ data Value (const :: Constness) (a :: *) where
 
 mutable :: Value 'Constant a -> Value 'Mutable a
 mutable = ValueMutable
-
-instance Show (Value const a) where
-  show (ValueMutable  c) = show c
-  show (ValueConstant c) = show c
-  show (ValueOperand  c) = show (evalRWS c () 0)
 
 data Classification
   = IntegerClass
@@ -146,7 +137,7 @@ class FreshName f where
   freshName :: f AST.Name
 
 -- instance FreshName ValueContext where
-instance FreshName (RWST () [AST.Named AST.Instruction] () BasicBlock) where
+instance FreshName (WriterT [AST.Named AST.Instruction] BasicBlock) where
   freshName =
     liftBasicBlock freshName
 
@@ -403,7 +394,7 @@ asOp (ValueConstant x) = return $ AST.ConstantOperand x
 asOp (ValueMutable x) = asOp x
 asOp (ValueOperand x) = do
   st@BasicBlockState{basicBlockInstructions = inst} <- get
-  (x', (), inst') <- runRWST x () ()
+  (x', inst') <- runWriterT x
   put $! st{basicBlockInstructions = inst <> inst'}
   return x'
 
