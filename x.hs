@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -386,19 +387,27 @@ namedFunction name defn = do
 externalFunction :: String -> Globals ty
 externalFunction = error "externalFunction"
 
-basicBlock :: BasicBlock (Terminator ()) -> FunctionDefinition Label
-basicBlock bb = do
-  name <- freshName
-  namedBasicBlock name bb
+class DefineBasicBlock f where
+  basicBlock :: BasicBlock (Terminator ()) -> f Label
+  default basicBlock :: (FreshName f, Monad f) => BasicBlock (Terminator ()) -> f Label
+  basicBlock bb = do
+    name <- freshName
+    namedBasicBlock name bb
 
-namedBasicBlock :: AST.Name -> BasicBlock (Terminator ()) -> FunctionDefinition Label
-namedBasicBlock name bb = do
-  ~FunctionDefinitionState{functionDefinitionBasicBlocks = originalBlocks} <- get
-  (_, newBlock) <- evalBasicBlock name bb
-  ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = extraBlocks} <- get
-  -- splice in the new block before any blocks defined while lifting
-  put st{functionDefinitionBasicBlocks = originalBlocks <> (newBlock:List.drop (List.length originalBlocks) extraBlocks)}
-  return (Label name)
+  namedBasicBlock :: AST.Name -> BasicBlock (Terminator ()) -> f Label
+
+instance DefineBasicBlock FunctionDefinition where
+  namedBasicBlock name bb = do
+    ~FunctionDefinitionState{functionDefinitionBasicBlocks = originalBlocks} <- get
+    (_, newBlock) <- evalBasicBlock name bb
+    ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = extraBlocks} <- get
+    -- splice in the new block before any blocks defined while lifting
+    put st{functionDefinitionBasicBlocks = originalBlocks <> (newBlock:List.drop (List.length originalBlocks) extraBlocks)}
+    return (Label name)
+
+instance DefineBasicBlock BasicBlock where
+  namedBasicBlock name bb =
+    liftFunctionDefinition (namedBasicBlock name bb)
 
 asOp :: Value const a -> BasicBlock AST.Operand
 asOp (ValueConstant x) = return $ AST.ConstantOperand x
@@ -553,19 +562,19 @@ foo = do
       val = 42 + 9
 
   namedModule "foo" $ do
-    void . namedFunction "bar" $ do
-      rec entryBlock <- basicBlock $ do
-            br secondBlock
+    void . namedFunction "bar" $ mdo
+      entryBlock <- basicBlock $ do
+        br secondBlock
 
-          secondBlock <- namedBasicBlock (AST.Name "second") $ do
-            someLocalPtr <- alloca
-            store someLocalPtr (99 :: Value 'Constant Word8)
-            someLocal <- load someLocalPtr
-            x <- val `add` someLocal
-            join $ condBr
-              <$> cmp someLocal (mutable 99)
-              <*> liftFunctionDefinition (basicBlock (ret $ x * someLocal + mutable (val - signum 8)))
-              <*> liftFunctionDefinition (basicBlock (br entryBlock))
+      secondBlock <- namedBasicBlock (AST.Name "second") $ do
+        someLocalPtr <- alloca
+        store someLocalPtr (99 :: Value 'Constant Word8)
+        someLocal <- load someLocalPtr
+        x <- val `add` someLocal
+        join $ condBr
+          <$> cmp someLocal (mutable 99)
+          <*> basicBlock (ret $ x * someLocal + mutable (val - signum 8))
+          <*> basicBlock (br entryBlock)
 
       return ()
 
