@@ -32,6 +32,7 @@ import Foreign.Ptr (Ptr)
 import GHC.TypeLits
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
+import qualified LLVM.General.AST.Float as Float
 import qualified LLVM.General.AST.Global as Global
 import qualified LLVM.General.AST.IntegerPredicate as IntegerPredicate
 import LLVM.General.PrettyPrint (showPretty)
@@ -322,6 +323,29 @@ instance Num (Value 'Constant Word64) where
   (*) = applyConstant2 (Constant.Mul False False)
   signum = signumUnsignedConst
 
+instance Num (Value 'Constant Float) where
+  fromInteger = ValueConstant . Constant.Float . Float.Single . fromIntegral
+  abs = id
+  (+) = applyConstant2 Constant.FAdd
+  (-) = applyConstant2 Constant.FSub
+  (*) = applyConstant2 Constant.FMul
+  -- signum = signumUnsignedConst
+
+instance Num (Value 'Constant Double) where
+  fromInteger = ValueConstant . Constant.Float . Float.Double . fromIntegral
+  abs = id
+  (+) = applyConstant2 Constant.FAdd
+  (-) = applyConstant2 Constant.FSub
+  (*) = applyConstant2 Constant.FMul
+
+instance Fractional (Value 'Constant Float) where
+  fromRational = ValueConstant . Constant.Float . Float.Single . fromRational
+  (/) = applyConstant2 Constant.FDiv
+
+instance Fractional (Value 'Constant Double) where
+  fromRational = ValueConstant . Constant.Float . Float.Double . fromRational
+  (/) = applyConstant2 Constant.FDiv
+
 {-
 instance Num (Value 'Mutable Int8) where
   fromInteger = ValueMutable . fromInteger
@@ -363,6 +387,28 @@ instance Num (Value 'Mutable Word64) where
           tell [LLVM.Add False False x y []]
           return $ LLVM.LocalReference (LLVM.UnName name)
 -}
+
+instance Num (Value 'Mutable Float) where
+  fromInteger = ValueMutable . fromInteger
+  abs = id
+  (+) = nameAndEmitInstruction2 AST.FAdd
+  (-) = nameAndEmitInstruction2 AST.FSub
+  (*) = nameAndEmitInstruction2 AST.FMul
+
+instance Num (Value 'Mutable Double) where
+  fromInteger = ValueMutable . fromInteger
+  abs = id
+  (+) = nameAndEmitInstruction2 AST.FAdd
+  (-) = nameAndEmitInstruction2 AST.FSub
+  (*) = nameAndEmitInstruction2 AST.FMul
+
+instance Fractional (Value 'Mutable Float) where
+  fromRational = ValueMutable . fromRational
+  (/) = nameAndEmitInstruction2 AST.FDiv
+
+instance Fractional (Value 'Mutable Double) where
+  fromRational = ValueMutable . fromRational
+  (/) = nameAndEmitInstruction2 AST.FDiv
 
 namedModule :: String -> Globals a -> Module a
 namedModule name body = do
