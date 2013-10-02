@@ -54,6 +54,9 @@ data Value (const :: Constness) (a :: *) where
   ValueOperand     :: ValueContext AST.Operand -> Value 'Mutable a
   ValueConstant    :: Constant.Constant        -> Value 'Constant a
 
+data AnyValue (a :: *) where
+  AnyValue :: ValueOf (Value const a) => Value const a -> AnyValue a
+
 mutable :: Value 'Constant a -> Value 'Mutable a
 mutable = ValueMutable
 
@@ -522,16 +525,32 @@ undef = do
   let val = Constant.Undef $ valueType ([] :: [Value 'Constant a])
   return $ ValueConstant val
 
-phi :: forall const a . ValueOf (Value const a) => [(Value const a, Label)] -> BasicBlock (Value 'Mutable a)
-phi incomingValues = do
-  -- @TODO: make sure we have evaluated all of the values in the list...
-  incomingValues' <- for incomingValues $ \ (val, Label origin) -> do
-    valOp <- asOp val
-    return (valOp, origin)
+class Phi (f :: * -> *) where
+  phi :: ValueOf (Value 'Mutable a) => [(f a, Label)] -> BasicBlock (Value 'Mutable a)
 
-  let ty = valueType ([] :: [Value const a])
-  name <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
-  return $! ValueOperand (return $ AST.LocalReference name)
+instance Phi (Value const) where
+  phi :: forall a . ValueOf (Value 'Mutable a) => [(Value const a, Label)] -> BasicBlock (Value 'Mutable a)
+  phi incomingValues = do
+    -- @TODO: make sure we have evaluated all of the values in the list...
+    incomingValues' <- for incomingValues $ \ (val, Label origin) -> do
+      valOp <- asOp val
+      return (valOp, origin)
+
+    let ty = valueType ([] :: [Value 'Mutable a])
+    name <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
+    return $! ValueOperand (return $ AST.LocalReference name)
+
+instance Phi AnyValue where
+  phi :: forall a . ValueOf (Value 'Mutable a) => [(AnyValue a, Label)] -> BasicBlock (Value 'Mutable a)
+  phi incomingValues = do
+    -- @TODO: make sure we have evaluated all of the values in the list...
+    incomingValues' <- for incomingValues $ \ (AnyValue val, Label origin) -> do
+      valOp <- asOp val
+      return (valOp, origin)
+
+    let ty = valueType ([] :: [Value 'Mutable a])
+    name <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
+    return $! ValueOperand (return $ AST.LocalReference name)
 
 alloca :: forall a . (ValueOf (Value 'Mutable a), SingI (ElementsOf (Value 'Mutable a))) => BasicBlock (Value 'Mutable (Ptr a))
 alloca = do
