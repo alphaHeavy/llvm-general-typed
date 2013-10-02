@@ -429,7 +429,7 @@ namedFunction name defn = do
       ~(a, defSt') = runState (runFunctionDefinition defn) defnSt
       x = AST.functionDefaults
            { Global.basicBlocks = functionDefinitionBasicBlocks defSt'
-           , Global.name = AST.Name "give me a name"
+           , Global.name = AST.Name name
            , Global.returnType = AST.IntegerType 8
            }
   st <- get
