@@ -211,7 +211,14 @@ data BasicBlockState = BasicBlockState
   , basicBlockTerminator   :: Maybe (AST.Named AST.Terminator)
   } deriving (Show)
 
-data Function a
+data CallingConvention where
+  C :: CallingConvention
+  Fast :: CallingConvention
+  Cold :: CallingConvention
+  GHC :: CallingConvention
+  NumberedCC :: Nat -> CallingConvention
+
+data Function (cconv :: CallingConvention) (a :: *)
 
 newtype Globals a = Globals{runGlobals :: State [AST.Global] a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState [AST.Global])
@@ -423,7 +430,7 @@ namedModule name body = do
   put $!  st{moduleName = name, moduleDefinitions = fmap AST.GlobalDefinition defs}
   return a
 
-namedFunction :: String -> FunctionDefinition a -> Globals (Function ty, a)
+namedFunction :: String -> FunctionDefinition a -> Globals (Function cconv ty, a)
 namedFunction name defn = do
   let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0}
       ~(a, defSt') = runState (runFunctionDefinition defn) defnSt
@@ -576,7 +583,7 @@ store address value = do
 
 type family ResultType a :: *
 
-call :: Function ty -> args -> BasicBlock (ResultType ty)
+call :: Function cconv ty -> args -> BasicBlock (ResultType ty)
 call = error "call"
 
 class Add (const :: Constness) where
