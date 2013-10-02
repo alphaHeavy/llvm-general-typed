@@ -122,7 +122,11 @@ instance ValueOf (Value const Word64) where
 
 data Label = Label AST.Name
 
-newtype Terminator a = Terminator a deriving (Show)
+newtype Terminator a = Terminator a deriving (Functor, Show)
+
+instance Applicative Terminator where
+  pure = Terminator
+  Terminator f <*> x = f <$> x
 
 class FreshName (f :: * -> *) where
   freshName :: f AST.Name
