@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -436,13 +435,12 @@ namedFunction name defn = do
 externalFunction :: String -> Globals ty
 externalFunction = error "externalFunction"
 
-class DefineBasicBlock f where
-  basicBlock :: BasicBlock (Terminator ()) -> f Label
-  default basicBlock :: (FreshName f, Monad f) => BasicBlock (Terminator ()) -> f Label
-  basicBlock bb = do
-    name <- freshName
-    namedBasicBlock name bb
+basicBlock :: (DefineBasicBlock f, FreshName f, Monad f) => BasicBlock (Terminator ()) -> f Label
+basicBlock bb = do
+  name <- freshName
+  namedBasicBlock name bb
 
+class DefineBasicBlock f where
   namedBasicBlock :: AST.Name -> BasicBlock (Terminator ()) -> f Label
 
 instance DefineBasicBlock FunctionDefinition where
