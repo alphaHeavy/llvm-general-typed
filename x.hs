@@ -39,15 +39,9 @@ import LLVM.General.PrettyPrint (showPretty)
 
 data Constness = Constant | Mutable
 
-type family (x :: k) :<+>: (y :: k) :: k
-
-type instance 'Constant :<+>: 'Constant = 'Constant
-type instance 'Constant :<+>: 'Mutable  = 'Mutable
-type instance 'Mutable  :<+>: 'Constant = 'Mutable
-type instance 'Mutable  :<+>: 'Mutable  = 'Mutable
-
-newtype ValueContext a = ValueContext{runValueContext :: WriterT [AST.Named AST.Instruction] BasicBlock a}
-  deriving (Functor, Applicative, Monad, MonadFix, MonadWriter [AST.Named AST.Instruction])
+type family Min (x :: k) (y :: k) :: k where
+  Min 'Constant 'Constant = 'Constant
+  Min x         y         = 'Mutable
 
 data Value (const :: Constness) (a :: *) where
   ValueMutable     :: Value 'Constant a      -> Value 'Mutable a
@@ -637,7 +631,7 @@ vmap2
   -> (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
   -> Value cx a
   -> Value cy a
-  -> BasicBlock (Value (cx :<+>: cy) b)
+  -> BasicBlock (Value (Min cx cy) b)
 vmap2 f g a b = k a b where
   j :: forall cx cy . Value cx a -> Value cy a -> BasicBlock (Value 'Mutable b)
   j x y = fmap ValueOperand (g <$> asOp x <*> asOp y)
@@ -654,10 +648,10 @@ vmap2 f g a b = k a b where
 
 class Add (classification :: Classification) where
   add
-    :: (ClassificationOf (Value (cx :<+>: cy) a) ~ classification)
+    :: (ClassificationOf (Value (Min cx cy) a) ~ classification)
     => Value cx a
     -> Value cy a
-    -> BasicBlock (Value (cx :<+>: cy) a)
+    -> BasicBlock (Value (Min cx cy) a)
 
 instance Add 'IntegerClass where
  add = vmap2 f g where
@@ -683,7 +677,7 @@ class Select (const :: Constness) where
   -- a constant. if you want a constant condition but mutable values (for some reason...)
   -- just wrap the condition with 'mutable'
   select
-    :: (cx :<+>: cy) ~ const
+    :: (Min cx cy) ~ const
     => Value const Bool
     -> Value cx a
     -> Value cy a
