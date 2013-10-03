@@ -632,20 +632,25 @@ vmap1 f g (ValueMutable x)  = weaken <$> vmap1 f g x
 vmap1 _ g x@ValueOperand{}  = fmap ValueOperand (g <$> asOp x)
 
 vmap2
-  :: (Constant.Constant -> Constant.Constant -> Constant.Constant)
+  :: forall a b cx cy .
+     (Constant.Constant -> Constant.Constant -> Constant.Constant)
   -> (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
   -> Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx :<+>: cy) b)
-vmap2 f _ (ValueConstant x) (ValueConstant y) = return $ ValueConstant (f x y)
-vmap2 f g (ValueMutable x)  (ValueMutable y)  = weaken <$> vmap2 f g x y
-vmap2 _ g x@ValueOperand{}  y@ValueOperand{}  = fmap ValueOperand (g <$> asOp x <*> asOp y)
-vmap2 _ g x@ValueOperand{}  (ValueMutable y)  = fmap ValueOperand (g <$> asOp x <*> asOp y)
-vmap2 _ g x@ValueOperand{}  y@ValueConstant{} = fmap ValueOperand (g <$> asOp x <*> asOp y)
-vmap2 _ g x@ValueConstant{} y@ValueOperand{}  = fmap ValueOperand (g <$> asOp x <*> asOp y)
-vmap2 _ g x@ValueConstant{} (ValueMutable y)  = fmap ValueOperand (g <$> asOp x <*> asOp y)
-vmap2 _ g (ValueMutable x)  y@ValueOperand{}  = fmap ValueOperand (g <$> asOp x <*> asOp y)
-vmap2 _ g (ValueMutable x)  y@ValueConstant{} = fmap ValueOperand (g <$> asOp x <*> asOp y)
+vmap2 f g a b = k a b where
+  j :: forall cx cy . Value cx a -> Value cy a -> BasicBlock (Value 'Mutable b)
+  j x y = fmap ValueOperand (g <$> asOp x <*> asOp y)
+  k (ValueConstant x) (ValueConstant y) = return $ ValueConstant (f x y)
+  k (ValueMutable x)  (ValueMutable y)  = weaken <$> vmap2 f g x y
+  -- prepare to experience the many pleasures of GADTs
+  k x@ValueOperand{}  y@ValueOperand{}  = j x y
+  k x@ValueOperand{}  (ValueMutable y)  = j x y
+  k x@ValueOperand{}  y@ValueConstant{} = j x y
+  k x@ValueConstant{} y@ValueOperand{}  = j x y
+  k x@ValueConstant{} (ValueMutable y)  = j x y
+  k (ValueMutable x)  y@ValueOperand{}  = j x y
+  k (ValueMutable x)  y@ValueConstant{} = j x y
 
 class Add (classification :: Classification) where
   add
