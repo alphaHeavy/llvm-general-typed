@@ -628,18 +628,15 @@ vmap2
   -> Value cy b
   -> BasicBlock (Value (Min cx cy) r)
 vmap2 f g = k where
-  j :: forall cx' cy' . Value cx' a -> Value cy' b -> BasicBlock (Value 'Mutable r)
+  j :: Value cx a -> Value cy b -> BasicBlock (Value 'Mutable r)
   j x y = fmap ValueOperand (g <$> asOp x <*> asOp y)
   k (ValueConstant x) (ValueConstant y) = return $ ValueConstant (f x y)
   k (ValueMutable x)  (ValueMutable y)  = weaken <$> vmap2 f g x y
   -- prepare to experience many pleasures of the GADT
-  k (ValueMutable x)  y@ValueConstant{} = j x y
-  k (ValueMutable x)  y@ValueOperand{}  = j x y
-  k x@ValueConstant{} (ValueMutable y)  = j x y
-  k x@ValueConstant{} y@ValueOperand{}  = j x y
-  k x@ValueOperand{}  (ValueMutable y)  = j x y
-  k x@ValueOperand{}  y@ValueConstant{} = j x y
-  k x@ValueOperand{}  y@ValueOperand{}  = j x y
+  k x@ValueOperand{} y = j x y
+  k x y@ValueOperand{} = j x y
+  k x@ValueMutable{} y = j x y
+  k x y@ValueMutable{} = j x y
 
 vmap3
   :: forall a b c cx cy cz r .
@@ -650,36 +647,17 @@ vmap3
   -> Value cz c
   -> BasicBlock (Value (cx `Min` cy `Min` cz) r)
 vmap3 f g = k where
-  j :: forall cx' cy' cz' . Value cx' a -> Value cy' b -> Value cz' c -> BasicBlock (Value 'Mutable r)
+  j :: Value cx a -> Value cy b -> Value cz c -> BasicBlock (Value 'Mutable r)
   j x y z = fmap ValueOperand (g <$> asOp x <*> asOp y <*> asOp z)
   k (ValueConstant x) (ValueConstant y) (ValueConstant z) = return $ ValueConstant (f x y z)
   k (ValueMutable x)  (ValueMutable y)  (ValueMutable z)  = weaken <$> vmap3 f g x y z
   -- prepare to experience many pleasures of the GADT
-  k (ValueMutable x)  (ValueMutable y)  z@ValueConstant{} = j x y z
-  k (ValueMutable x)  (ValueMutable y)  z@ValueOperand{}  = j x y z
-  k (ValueMutable x)  y@ValueConstant{} (ValueMutable z)  = j x y z
-  k (ValueMutable x)  y@ValueConstant{} z@ValueConstant{} = j x y z
-  k (ValueMutable x)  y@ValueConstant{} z@ValueOperand{}  = j x y z
-  k (ValueMutable x)  y@ValueOperand{}  (ValueMutable z)  = j x y z
-  k (ValueMutable x)  y@ValueOperand{}  z@ValueConstant{} = j x y z
-  k (ValueMutable x)  y@ValueOperand{}  z@ValueOperand{}  = j x y z
-  k x@ValueConstant{} (ValueMutable y)  (ValueMutable z)  = j x y z
-  k x@ValueConstant{} (ValueMutable y)  z@ValueConstant{} = j x y z
-  k x@ValueConstant{} (ValueMutable y)  z@ValueOperand{}  = j x y z
-  k x@ValueConstant{} y@ValueConstant{} (ValueMutable z)  = j x y z
-  k x@ValueConstant{} y@ValueConstant{} z@ValueOperand{}  = j x y z
-  k x@ValueConstant{} y@ValueOperand{}  (ValueMutable z)  = j x y z
-  k x@ValueConstant{} y@ValueOperand{}  z@ValueConstant{} = j x y z
-  k x@ValueConstant{} y@ValueOperand{}  z@ValueOperand{}  = j x y z
-  k x@ValueOperand{}  (ValueMutable y)  (ValueMutable z)  = j x y z
-  k x@ValueOperand{}  (ValueMutable y)  z@ValueConstant{} = j x y z
-  k x@ValueOperand{}  (ValueMutable y)  z@ValueOperand{}  = j x y z
-  k x@ValueOperand{}  y@ValueConstant{} (ValueMutable z)  = j x y z
-  k x@ValueOperand{}  y@ValueConstant{} z@ValueConstant{} = j x y z
-  k x@ValueOperand{}  y@ValueConstant{} z@ValueOperand{}  = j x y z
-  k x@ValueOperand{}  y@ValueOperand{}  (ValueMutable z)  = j x y z
-  k x@ValueOperand{}  y@ValueOperand{}  z@ValueConstant{} = j x y z
-  k x@ValueOperand{}  y@ValueOperand{}  z@ValueOperand{}  = j x y z
+  k x@ValueOperand{} y z = j x y z
+  k x y@ValueOperand{} z = j x y z
+  k x y z@ValueOperand{} = j x y z
+  k x@ValueMutable{} y z = j x y z
+  k x y@ValueMutable{} z = j x y z
+  k x y z@ValueMutable{} = j x y z
 
 class Add (classification :: Classification) where
   add
