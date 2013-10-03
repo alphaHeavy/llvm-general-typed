@@ -620,25 +620,65 @@ vmap1 f g (ValueMutable x)  = weaken <$> vmap1 f g x
 vmap1 _ g x@ValueOperand{}  = fmap ValueOperand (g <$> asOp x)
 
 vmap2
-  :: forall a b cx cy .
+  :: forall a b cx cy r .
      (Constant.Constant -> Constant.Constant -> Constant.Constant)
   -> (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
   -> Value cx a
-  -> Value cy a
-  -> BasicBlock (Value (Min cx cy) b)
-vmap2 f g a b = k a b where
-  j :: forall cx cy . Value cx a -> Value cy a -> BasicBlock (Value 'Mutable b)
+  -> Value cy b
+  -> BasicBlock (Value (Min cx cy) r)
+vmap2 f g = k where
+  j :: forall cx' cy' . Value cx' a -> Value cy' b -> BasicBlock (Value 'Mutable r)
   j x y = fmap ValueOperand (g <$> asOp x <*> asOp y)
   k (ValueConstant x) (ValueConstant y) = return $ ValueConstant (f x y)
   k (ValueMutable x)  (ValueMutable y)  = weaken <$> vmap2 f g x y
-  -- prepare to experience the many pleasures of GADTs
-  k x@ValueOperand{}  y@ValueOperand{}  = j x y
+  -- prepare to experience many pleasures of the GADT
+  k (ValueMutable x)  y@ValueConstant{} = j x y
+  k (ValueMutable x)  y@ValueOperand{}  = j x y
+  k x@ValueConstant{} (ValueMutable y)  = j x y
+  k x@ValueConstant{} y@ValueOperand{}  = j x y
   k x@ValueOperand{}  (ValueMutable y)  = j x y
   k x@ValueOperand{}  y@ValueConstant{} = j x y
-  k x@ValueConstant{} y@ValueOperand{}  = j x y
-  k x@ValueConstant{} (ValueMutable y)  = j x y
-  k (ValueMutable x)  y@ValueOperand{}  = j x y
-  k (ValueMutable x)  y@ValueConstant{} = j x y
+  k x@ValueOperand{}  y@ValueOperand{}  = j x y
+
+vmap3
+  :: forall a b c cx cy cz r .
+     (Constant.Constant -> Constant.Constant -> Constant.Constant -> Constant.Constant)
+  -> (AST.Operand -> AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
+  -> Value cx a
+  -> Value cy b
+  -> Value cz c
+  -> BasicBlock (Value (cx `Min` cy `Min` cz) r)
+vmap3 f g = k where
+  j :: forall cx' cy' cz' . Value cx' a -> Value cy' b -> Value cz' c -> BasicBlock (Value 'Mutable r)
+  j x y z = fmap ValueOperand (g <$> asOp x <*> asOp y <*> asOp z)
+  k (ValueConstant x) (ValueConstant y) (ValueConstant z) = return $ ValueConstant (f x y z)
+  k (ValueMutable x)  (ValueMutable y)  (ValueMutable z)  = weaken <$> vmap3 f g x y z
+  -- prepare to experience many pleasures of the GADT
+  k (ValueMutable x)  (ValueMutable y)  z@ValueConstant{} = j x y z
+  k (ValueMutable x)  (ValueMutable y)  z@ValueOperand{}  = j x y z
+  k (ValueMutable x)  y@ValueConstant{} (ValueMutable z)  = j x y z
+  k (ValueMutable x)  y@ValueConstant{} z@ValueConstant{} = j x y z
+  k (ValueMutable x)  y@ValueConstant{} z@ValueOperand{}  = j x y z
+  k (ValueMutable x)  y@ValueOperand{}  (ValueMutable z)  = j x y z
+  k (ValueMutable x)  y@ValueOperand{}  z@ValueConstant{} = j x y z
+  k (ValueMutable x)  y@ValueOperand{}  z@ValueOperand{}  = j x y z
+  k x@ValueConstant{} (ValueMutable y)  (ValueMutable z)  = j x y z
+  k x@ValueConstant{} (ValueMutable y)  z@ValueConstant{} = j x y z
+  k x@ValueConstant{} (ValueMutable y)  z@ValueOperand{}  = j x y z
+  k x@ValueConstant{} y@ValueConstant{} (ValueMutable z)  = j x y z
+  k x@ValueConstant{} y@ValueConstant{} z@ValueOperand{}  = j x y z
+  k x@ValueConstant{} y@ValueOperand{}  (ValueMutable z)  = j x y z
+  k x@ValueConstant{} y@ValueOperand{}  z@ValueConstant{} = j x y z
+  k x@ValueConstant{} y@ValueOperand{}  z@ValueOperand{}  = j x y z
+  k x@ValueOperand{}  (ValueMutable y)  (ValueMutable z)  = j x y z
+  k x@ValueOperand{}  (ValueMutable y)  z@ValueConstant{} = j x y z
+  k x@ValueOperand{}  (ValueMutable y)  z@ValueOperand{}  = j x y z
+  k x@ValueOperand{}  y@ValueConstant{} (ValueMutable z)  = j x y z
+  k x@ValueOperand{}  y@ValueConstant{} z@ValueConstant{} = j x y z
+  k x@ValueOperand{}  y@ValueConstant{} z@ValueOperand{}  = j x y z
+  k x@ValueOperand{}  y@ValueOperand{}  (ValueMutable z)  = j x y z
+  k x@ValueOperand{}  y@ValueOperand{}  z@ValueConstant{} = j x y z
+  k x@ValueOperand{}  y@ValueOperand{}  z@ValueOperand{}  = j x y z
 
 class Add (classification :: Classification) where
   add
@@ -657,37 +697,35 @@ instance Add 'FloatingPointClass where
    f = Constant.FAdd
    g x y = nameInstruction $ AST.FAdd x y []
 
-class Select (const :: Constness) where
-  -- the condition constness must match the result constness. this implies that
-  -- if both true and false values are constant the switch condition must also be
-  -- a constant. if you want a constant condition but mutable values (for some reason...)
-  -- just wrap the condition with 'mutable'
-  select
-    :: (Min cx cy) ~ const
-    => Value const Bool
-    -> Value cx a
+-- the condition constness must match the result constness. this implies that
+-- if both true and false values are constant the switch condition must also be
+-- a constant. if you want a constant condition but mutable values (for some reason...)
+-- just wrap the condition with 'mutable'
+select
+  :: Value cc Bool
+  -> Value ct a
+  -> Value cf a
+  -> BasicBlock (Value (cc `Min` ct `Min` cf) a)
+select = vmap3 f g where
+  f = Constant.Select
+  g c t f = nameInstruction $ AST.Select c t f []
+
+class Cmp (classification :: Classification) where
+  cmp
+    :: (ClassificationOf (Value (Min cx cy) a) ~ classification)
+    => Value cx a
     -> Value cy a
-    -> BasicBlock (Value const a)
+    -> BasicBlock (Value (Min cx cy) Bool)
 
-instance Select 'Mutable where
-  select condition trueValue falseValue = do
-    conditionOp <- asOp condition
-    trueValueOp <- asOp trueValue
-    falseValueOp <- asOp falseValue
-    let instr = AST.Select conditionOp trueValueOp falseValueOp []
-    name <- nameAndPushInstruction instr
-    return $! ValueOperand (return $ AST.LocalReference name)
+instance Cmp 'IntegerClass where
+  cmp = vmap2 f g where
+    f = Constant.ICmp IntegerPredicate.EQ
+    g x y = nameInstruction $ AST.ICmp IntegerPredicate.EQ x y []
 
-instance Select 'Constant where
-  select (ValueConstant condition) (ValueConstant trueValue) (ValueConstant falseValue) = do
-    let instr = Constant.Select condition trueValue falseValue
-    return $ ValueConstant instr
-
-cmp :: Value cx a -> Value cy a -> BasicBlock (Value 'Mutable Bool)
-cmp (ValueMutable x) y = cmp x y
-cmp x (ValueMutable y) = cmp x y
-cmp lhs rhs = do
-  return (ValueMutable (ValueConstant (Constant.Int 1 1)))
+instance Cmp 'FloatingPointClass where
+  cmp = vmap2 f g where
+    f = Constant.FCmp FloatingPointPredicate.OEQ
+    g x y = nameInstruction $ AST.FCmp FloatingPointPredicate.OEQ x y []
 
 foo :: Module ()
 foo = do
