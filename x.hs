@@ -20,6 +20,7 @@ module Main where
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Fix
+import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
 import Control.Monad.Writer.Lazy
 import Data.Int
@@ -49,9 +50,9 @@ newtype ValueContext a = ValueContext{runValueContext :: WriterT [AST.Named AST.
   deriving (Functor, Applicative, Monad, MonadFix, MonadWriter [AST.Named AST.Instruction])
 
 data Value (const :: Constness) (a :: *) where
-  ValueMutable     :: Value 'Constant a        -> Value 'Mutable a
-  ValueOperand     :: ValueContext AST.Operand -> Value 'Mutable a
-  ValueConstant    :: Constant.Constant        -> Value 'Constant a
+  ValueMutable     :: Value 'Constant a      -> Value 'Mutable a
+  ValueOperand     :: BasicBlock AST.Operand -> Value 'Mutable a
+  ValueConstant    :: Constant.Constant      -> Value 'Constant a
 
 data AnyValue (a :: *) where
   AnyValue :: ValueOf (Value const a) => Value const a -> AnyValue a
@@ -140,10 +141,6 @@ instance Applicative Terminator where
 class FreshName (f :: * -> *) where
   freshName :: f AST.Name
 
-instance FreshName ValueContext where
-  freshName =
-    liftBasicBlock freshName
-
 instance FreshName BasicBlock where
   freshName =
     liftFunctionDefinition freshName
@@ -156,8 +153,7 @@ instance FreshName FunctionDefinition where
 
 pushNamedInstruction :: AST.Named AST.Instruction -> BasicBlock ()
 pushNamedInstruction inst' = do
-  st@BasicBlockState{basicBlockInstructions = inst} <- get
-  put $! st{basicBlockInstructions = inst <> [inst']}
+  tell [inst']
 
 pushNamelessInstruction :: AST.Instruction -> BasicBlock ()
 pushNamelessInstruction = pushNamedInstruction . AST.Do
@@ -170,7 +166,7 @@ nameAndPushInstruction inst' = do
 
 apply
   -- :: (cx :<+>: cx) ~ 'Mutable
-  :: (AST.Operand -> ValueContext AST.Operand)
+  :: (AST.Operand -> BasicBlock AST.Operand)
   -> Value const x
   -> Value 'Mutable a
 apply f (ValueOperand x)  = ValueOperand (x >>= f)
@@ -179,7 +175,7 @@ apply f (ValueMutable x)  = apply f x
 
 apply2
   -- :: (cx :<+>: cx) ~ 'Mutable
-  :: (AST.Operand -> AST.Operand -> ValueContext AST.Operand)
+  :: (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
   -> Value cx x
   -> Value cy y
   -> Value 'Mutable a
@@ -205,18 +201,14 @@ data FunctionDefinitionState = FunctionDefinitionState
   , functionDefinitionFreshId     :: {-# UNPACK #-} !Word
   }
 
-newtype BasicBlock a = BasicBlock{runBasicBlock :: StateT BasicBlockState FunctionDefinition a}
-  deriving (Functor, Applicative, Monad, MonadFix, MonadState BasicBlockState)
-
-liftBasicBlock :: BasicBlock a -> ValueContext a
-liftBasicBlock = ValueContext . lift
+newtype BasicBlock a = BasicBlock{runBasicBlock :: RWST () [AST.Named AST.Instruction] BasicBlockState FunctionDefinition a}
+  deriving (Functor, Applicative, Monad, MonadFix, MonadState BasicBlockState, MonadWriter [AST.Named AST.Instruction])
 
 liftFunctionDefinition :: FunctionDefinition a -> BasicBlock a
 liftFunctionDefinition = BasicBlock . lift
 
 data BasicBlockState = BasicBlockState
   { basicBlockName         :: AST.Name
-  , basicBlockInstructions :: [AST.Named AST.Instruction]
   , basicBlockTerminator   :: Maybe (AST.Named AST.Terminator)
   } deriving (Show)
 
@@ -243,8 +235,8 @@ evalModule (Module a) = (m, a') where
 evalBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> FunctionDefinition (a, AST.BasicBlock)
 evalBasicBlock name bb = do
   -- pattern match must be lazy to support the MonadFix instance
-  ~(Terminator a, st) <- runStateT (runBasicBlock bb) (BasicBlockState name [] Nothing)
-  return (a, AST.BasicBlock (basicBlockName st) (basicBlockInstructions st) (fromJust (basicBlockTerminator st)))
+  ~(Terminator a, st, instr) <- runRWST (runBasicBlock bb) () (BasicBlockState name Nothing)
+  return (a, AST.BasicBlock (basicBlockName st) instr (fromJust (basicBlockTerminator st)))
 
 -- instance IsString (Value const String) where
 
@@ -489,11 +481,7 @@ instance DefineBasicBlock BasicBlock where
 asOp :: Value const a -> BasicBlock AST.Operand
 asOp (ValueConstant x) = return $ AST.ConstantOperand x
 asOp (ValueMutable x) = asOp x
-asOp (ValueOperand x) = do
-  st@BasicBlockState{basicBlockInstructions = inst} <- get
-  ~(x', inst') <- runWriterT $ runValueContext x
-  put $! st{basicBlockInstructions = inst <> inst'}
-  return x'
+asOp (ValueOperand x) = x
 
 setTerminator :: AST.Terminator -> BasicBlock ()
 setTerminator term = do
@@ -636,7 +624,7 @@ bitcast = vmap1 f g where
 
 vmap1
   :: (Constant.Constant -> Constant.Constant)
-  -> (AST.Operand -> ValueContext AST.Operand)
+  -> (AST.Operand -> BasicBlock AST.Operand)
   -> Value const a
   -> BasicBlock (Value const b)
 vmap1 f _ (ValueConstant x) = return $ ValueConstant (f x)
@@ -645,7 +633,7 @@ vmap1 _ g x@ValueOperand{}  = fmap ValueOperand (g <$> asOp x)
 
 vmap2
   :: (Constant.Constant -> Constant.Constant -> Constant.Constant)
-  -> (AST.Operand -> AST.Operand -> ValueContext AST.Operand)
+  -> (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
   -> Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx :<+>: cy) b)
