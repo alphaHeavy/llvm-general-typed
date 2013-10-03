@@ -34,6 +34,7 @@ import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
 import qualified LLVM.General.AST.Float as Float
 import qualified LLVM.General.AST.Global as Global
+import qualified LLVM.General.AST.FloatingPointPredicate as FloatingPointPredicate
 import qualified LLVM.General.AST.IntegerPredicate as IntegerPredicate
 import LLVM.General.PrettyPrint (showPretty)
 
@@ -158,27 +159,6 @@ nameAndPushInstruction inst' = do
   pushNamedInstruction $ name AST.:= inst'
   return name
 
-apply
-  -- :: (cx :<+>: cx) ~ 'Mutable
-  :: (AST.Operand -> BasicBlock AST.Operand)
-  -> Value const x
-  -> Value 'Mutable a
-apply f (ValueOperand x)  = ValueOperand (x >>= f)
-apply f (ValueConstant x) = apply f (ValueOperand . return $ AST.ConstantOperand x)
-apply f (ValueMutable x)  = apply f x
-
-apply2
-  -- :: (cx :<+>: cx) ~ 'Mutable
-  :: (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
-  -> Value cx x
-  -> Value cy y
-  -> Value 'Mutable a
-apply2 f (ValueOperand x) (ValueOperand y) = ValueOperand . join $ f <$> x <*> y
-apply2 f (ValueConstant x) y = apply2 f (ValueOperand . return $ AST.ConstantOperand x) y
-apply2 f x (ValueConstant y) = apply2 f x (ValueOperand . return $ AST.ConstantOperand y)
-apply2 f (ValueMutable x) y  = apply2 f x y
-apply2 f x (ValueMutable y)  = apply2 f x y
-
 newtype Module a = Module{runModule :: State ModuleState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState ModuleState)
 
@@ -241,6 +221,14 @@ nameAndEmitInstruction1
 nameAndEmitInstruction1 instr =
   apply $ \ x ->
     nameInstruction $ instr x []
+ where
+  apply
+    :: (AST.Operand -> BasicBlock AST.Operand)
+    -> Value const x
+    -> Value 'Mutable a
+  apply f (ValueOperand x)  = ValueOperand (x >>= f)
+  apply f (ValueConstant x) = apply f (ValueOperand . return $ AST.ConstantOperand x)
+  apply f (ValueMutable x)  = apply f x
 
 nameAndEmitInstruction2
   :: (AST.Operand -> AST.Operand -> [t] -> AST.Instruction)
@@ -250,6 +238,17 @@ nameAndEmitInstruction2
 nameAndEmitInstruction2 instr =
   apply2 $ \ x y ->
     nameInstruction $ instr x y []
+ where
+  apply2
+    :: (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
+    -> Value cx x
+    -> Value cy y
+    -> Value 'Mutable a
+  apply2 f (ValueOperand x) (ValueOperand y) = ValueOperand . join $ f <$> x <*> y
+  apply2 f (ValueConstant x) y = apply2 f (ValueOperand . return $ AST.ConstantOperand x) y
+  apply2 f x (ValueConstant y) = apply2 f x (ValueOperand . return $ AST.ConstantOperand y)
+  apply2 f (ValueMutable x) y  = apply2 f x y
+  apply2 f x (ValueMutable y)  = apply2 f x y
 
 applyConstant2 :: (Constant.Constant -> Constant.Constant -> Constant.Constant) -> Value 'Constant a -> Value 'Constant a -> Value 'Constant a
 applyConstant2 instr (ValueConstant x) (ValueConstant y) =
@@ -425,19 +424,19 @@ instance Fractional (Value 'Mutable Double) where
   (/) = nameAndEmitInstruction2 AST.FDiv
 
 namedModule :: String -> Globals a -> Module a
-namedModule name body = do
+namedModule n body = do
   let ~(a, defs) = runState (runGlobals body) []
   st <- get
-  put $!  st{moduleName = name, moduleDefinitions = fmap AST.GlobalDefinition defs}
+  put $!  st{moduleName = n, moduleDefinitions = fmap AST.GlobalDefinition defs}
   return a
 
 namedFunction :: String -> FunctionDefinition a -> Globals (Function cconv ty, a)
-namedFunction name defn = do
+namedFunction n defn = do
   let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0}
       ~(a, defSt') = runState (runFunctionDefinition defn) defnSt
       x = AST.functionDefaults
            { Global.basicBlocks = functionDefinitionBasicBlocks defSt'
-           , Global.name = AST.Name name
+           , Global.name = AST.Name n
            , Global.returnType = AST.IntegerType 8
            }
   st <- get
@@ -449,24 +448,24 @@ externalFunction = error "externalFunction"
 
 basicBlock :: (DefineBasicBlock f, FreshName f, Monad f) => BasicBlock (Terminator ()) -> f Label
 basicBlock bb = do
-  name <- freshName
-  namedBasicBlock name bb
+  n <- freshName
+  namedBasicBlock n bb
 
 class DefineBasicBlock f where
   namedBasicBlock :: AST.Name -> BasicBlock (Terminator ()) -> f Label
 
 instance DefineBasicBlock FunctionDefinition where
-  namedBasicBlock name bb = do
+  namedBasicBlock n bb = do
     ~FunctionDefinitionState{functionDefinitionBasicBlocks = originalBlocks} <- get
-    (_, newBlock) <- evalBasicBlock name bb
+    (_, newBlock) <- evalBasicBlock n bb
     ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = extraBlocks} <- get
     -- splice in the new block before any blocks defined while lifting
     put st{functionDefinitionBasicBlocks = originalBlocks <> (newBlock:List.drop (List.length originalBlocks) extraBlocks)}
-    return (Label name)
+    return $ Label n
 
 instance DefineBasicBlock BasicBlock where
-  namedBasicBlock name bb =
-    liftFunctionDefinition (namedBasicBlock name bb)
+  namedBasicBlock n bb =
+    liftFunctionDefinition (namedBasicBlock n bb)
 
 asOp :: Value const a -> BasicBlock AST.Operand
 asOp (ValueConstant x) = return $ AST.ConstantOperand x
@@ -543,8 +542,8 @@ instance Phi (Value const) where
       return (valOp, origin)
 
     let ty = valueType ([] :: [Value 'Mutable a])
-    name <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
-    return $! ValueOperand (return $ AST.LocalReference name)
+    n <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
+    return $! ValueOperand (return $ AST.LocalReference n)
 
 instance Phi AnyValue where
   phi :: forall a . ValueOf (Value 'Mutable a) => [(AnyValue a, Label)] -> BasicBlock (Value 'Mutable a)
@@ -555,21 +554,22 @@ instance Phi AnyValue where
       return (valOp, origin)
 
     let ty = valueType ([] :: [Value 'Mutable a])
-    name <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
-    return $! ValueOperand (return $ AST.LocalReference name)
+    n <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
+    return $! ValueOperand (return $ AST.LocalReference n)
 
 alloca :: forall a . (ValueOf (Value 'Mutable a), SingI (ElementsOf (Value 'Mutable a))) => BasicBlock (Value 'Mutable (Ptr a))
 alloca = do
   let ty = valueType ([] :: [Value 'Mutable a])
       ne = fromSing (sing :: Sing (ElementsOf (Value 'Mutable a)))
-  name <- nameAndPushInstruction $ AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
-  return $! ValueOperand (return $ AST.LocalReference name)
+  -- @TODO: the hardcoded 64 should probably be the target word size?
+  n <- nameAndPushInstruction $ AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
+  return $! ValueOperand (return $ AST.LocalReference n)
 
 load :: Value const (Ptr a) -> BasicBlock (Value 'Mutable a)
 load x = do
   x' <- asOp x
-  name <- nameAndPushInstruction $ AST.Load False x' Nothing 0 []
-  return $! ValueOperand (return (AST.LocalReference name))
+  n <- nameAndPushInstruction $ AST.Load False x' Nothing 0 []
+  return $! ValueOperand (return (AST.LocalReference n))
 
 store :: Value cx (Ptr a) -> Value cy a -> BasicBlock ()
 store address value = do
@@ -585,9 +585,9 @@ call = error "call"
 
 nameInstruction :: AST.Instruction -> BasicBlock AST.Operand
 nameInstruction instr = do
-  name <- freshName
-  tell [name AST.:= instr]
-  return $ AST.LocalReference name
+  n <- freshName
+  tell [n AST.:= instr]
+  return $ AST.LocalReference n
 
 trunc
   :: forall a b const .
