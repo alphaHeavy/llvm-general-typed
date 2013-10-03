@@ -710,6 +710,26 @@ select = vmap3 f g where
   f = Constant.Select
   g c t f = nameInstruction $ AST.Select c t f []
 
+icmp
+  :: (ClassificationOf (Value (Min cx cy) a) ~ IntegerClass)
+  => IntegerPredicate.IntegerPredicate
+  -> Value cx a
+  -> Value cy a
+  -> BasicBlock (Value (Min cx cy) Bool)
+icmp p = vmap2 f g where
+  f = Constant.ICmp p
+  g x y = nameInstruction $ AST.ICmp p x y []
+
+fcmp
+  :: (ClassificationOf (Value (Min cx cy) a) ~ FloatingPointClass)
+  => FloatingPointPredicate.FloatingPointPredicate
+  -> Value cx a
+  -> Value cy a
+  -> BasicBlock (Value (Min cx cy) Bool)
+fcmp p = vmap2 f g where
+  f = Constant.FCmp p
+  g x y = nameInstruction $ AST.FCmp p x y []
+
 class Cmp (classification :: Classification) where
   cmp
     :: (ClassificationOf (Value (Min cx cy) a) ~ classification)
