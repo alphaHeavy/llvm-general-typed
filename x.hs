@@ -239,10 +239,8 @@ nameAndEmitInstruction1
   -> Value const x
   -> Value 'Mutable a
 nameAndEmitInstruction1 instr =
-  apply $ \ x -> do
-    name <- freshName
-    tell [name AST.:= instr x []]
-    return $ AST.LocalReference name
+  apply $ \ x ->
+    nameInstruction $ instr x []
 
 nameAndEmitInstruction2
   :: (AST.Operand -> AST.Operand -> [t] -> AST.Instruction)
@@ -250,10 +248,8 @@ nameAndEmitInstruction2
   -> Value cy y
   -> Value 'Mutable a
 nameAndEmitInstruction2 instr =
-  apply2 $ \ x y -> do
-    name <- freshName
-    tell [name AST.:= instr x y []]
-    return $ AST.LocalReference name
+  apply2 $ \ x y ->
+    nameInstruction $ instr x y []
 
 applyConstant2 :: (Constant.Constant -> Constant.Constant -> Constant.Constant) -> Value 'Constant a -> Value 'Constant a -> Value 'Constant a
 applyConstant2 instr (ValueConstant x) (ValueConstant y) =
@@ -587,6 +583,12 @@ type family ResultType a :: *
 call :: Function cconv ty -> args -> BasicBlock (ResultType ty)
 call = error "call"
 
+nameInstruction :: AST.Instruction -> BasicBlock AST.Operand
+nameInstruction instr = do
+  name <- freshName
+  tell [name AST.:= instr]
+  return $ AST.LocalReference name
+
 trunc
   :: forall a b const .
      (ClassificationOf (Value const a) ~ IntegerClass, ClassificationOf (Value const b) ~ IntegerClass
@@ -597,11 +599,7 @@ trunc
 trunc = vmap1 f g where
   vt = valueType ([] :: [Value const b])
   f v = Constant.Trunc v vt
-  g v = do
-    let instr = AST.Trunc v vt []
-    name <- freshName
-    tell [name AST.:= instr]
-    return $ AST.LocalReference name
+  g v = nameInstruction $ AST.Trunc v vt []
 
 bitcast
   :: forall a b const . (BitsOf (Value const a) ~ BitsOf (Value const b), ValueOf (Value const b))
@@ -610,11 +608,7 @@ bitcast
 bitcast = vmap1 f g where
   vt = valueType ([] :: [Value const b])
   f v = Constant.BitCast v vt
-  g v = do
-    let instr = AST.BitCast v vt []
-    name <- freshName
-    tell [name AST.:= instr]
-    return $ AST.LocalReference name
+  g v = nameInstruction $ AST.BitCast v vt []
 
 vmap1
   :: (Constant.Constant -> Constant.Constant)
@@ -656,20 +650,12 @@ class Add (classification :: Classification) where
 instance Add 'IntegerClass where
  add = vmap2 f g where
    f = Constant.Add False False
-   g x y = do
-    let instr = AST.Add False False x y []
-    name <- freshName
-    tell [name AST.:= instr]
-    return $ AST.LocalReference name
+   g x y = nameInstruction $ AST.Add False False x y []
 
 instance Add 'FloatingPointClass where
  add = vmap2 f g where
    f = Constant.FAdd
-   g x y = do
-    let instr = AST.FAdd x y []
-    name <- freshName
-    tell [name AST.:= instr]
-    return $ AST.LocalReference name
+   g x y = nameInstruction $ AST.FAdd x y []
 
 class Select (const :: Constness) where
   -- the condition constness must match the result constness. this implies that
