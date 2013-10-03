@@ -62,6 +62,15 @@ mutable = ValueMutable
 constant :: Value 'Constant a -> Value 'Constant a
 constant = id
 
+class Weaken (const :: Constness) where
+  weaken :: Value const a -> Value 'Mutable a
+
+instance Weaken 'Constant where
+  weaken = mutable
+
+instance Weaken 'Mutable where
+  weaken = id
+
 data Classification
   = IntegerClass
   | FloatingPointClass
@@ -174,7 +183,7 @@ apply2
   -> Value cx x
   -> Value cy y
   -> Value 'Mutable a
-apply2 f (ValueOperand x) (ValueOperand y) = ValueOperand $ x >>= \ op1 -> y >>= \ op2 -> f op1 op2
+apply2 f (ValueOperand x) (ValueOperand y) = ValueOperand . join $ f <$> x <*> y
 apply2 f (ValueConstant x) y = apply2 f (ValueOperand . return $ AST.ConstantOperand x) y
 apply2 f x (ValueConstant y) = apply2 f x (ValueOperand . return $ AST.ConstantOperand y)
 apply2 f (ValueMutable x) y  = apply2 f x y
@@ -238,6 +247,16 @@ evalBasicBlock name bb = do
   return (a, AST.BasicBlock (basicBlockName st) (basicBlockInstructions st) (fromJust (basicBlockTerminator st)))
 
 -- instance IsString (Value const String) where
+
+nameAndEmitInstruction1
+  :: (AST.Operand -> [t] -> AST.Instruction)
+  -> Value const x
+  -> Value 'Mutable a
+nameAndEmitInstruction1 instr =
+  apply $ \ x -> do
+    name <- freshName
+    tell [name AST.:= instr x []]
+    return $ AST.LocalReference name
 
 nameAndEmitInstruction2
   :: (AST.Operand -> AST.Operand -> [t] -> AST.Instruction)
@@ -586,17 +605,84 @@ type family ResultType a :: *
 call :: Function cconv ty -> args -> BasicBlock (ResultType ty)
 call = error "call"
 
-class Add (const :: Constness) where
-  add :: (cx :<+>: cy) ~ const => Value cx a -> Value cy a -> BasicBlock (Value const a)
+trunc
+  :: forall a b const .
+     (ClassificationOf (Value const a) ~ IntegerClass, ClassificationOf (Value const b) ~ IntegerClass
+     ,ValueOf (Value const b)
+     ,BitsOf (Value const b) + 1 <= BitsOf (Value const a))
+  => Value const a
+  -> BasicBlock (Value const b)
+trunc = vmap1 f g where
+  vt = valueType ([] :: [Value const b])
+  f v = Constant.Trunc v vt
+  g v = do
+    let instr = AST.Trunc v vt []
+    name <- freshName
+    tell [name AST.:= instr]
+    return $ AST.LocalReference name
 
-instance Add 'Mutable where
-  add x y = do
-    res <- asOp $ nameAndEmitInstruction2 (AST.Add False False) x y
-    return . ValueOperand $ pure res
+bitcast
+  :: forall a b const . (BitsOf (Value const a) ~ BitsOf (Value const b), ValueOf (Value const b))
+  => Value const a
+  -> BasicBlock (Value const b)
+bitcast = vmap1 f g where
+  vt = valueType ([] :: [Value const b])
+  f v = Constant.BitCast v vt
+  g v = do
+    let instr = AST.BitCast v vt []
+    name <- freshName
+    tell [name AST.:= instr]
+    return $ AST.LocalReference name
 
-instance Add 'Constant where
-  ValueConstant x `add` ValueConstant y =
-    return . ValueConstant $ Constant.Add False False x y
+vmap1
+  :: (Constant.Constant -> Constant.Constant)
+  -> (AST.Operand -> ValueContext AST.Operand)
+  -> Value const a
+  -> BasicBlock (Value const b)
+vmap1 f _ (ValueConstant x) = return $ ValueConstant (f x)
+vmap1 f g (ValueMutable x)  = weaken <$> vmap1 f g x
+vmap1 _ g x@ValueOperand{}  = fmap ValueOperand (g <$> asOp x)
+
+vmap2
+  :: (Constant.Constant -> Constant.Constant -> Constant.Constant)
+  -> (AST.Operand -> AST.Operand -> ValueContext AST.Operand)
+  -> Value cx a
+  -> Value cy a
+  -> BasicBlock (Value (cx :<+>: cy) b)
+vmap2 f _ (ValueConstant x) (ValueConstant y) = return $ ValueConstant (f x y)
+vmap2 f g (ValueMutable x)  (ValueMutable y)  = weaken <$> vmap2 f g x y
+vmap2 _ g x@ValueOperand{}  y@ValueOperand{}  = fmap ValueOperand (g <$> asOp x <*> asOp y)
+vmap2 _ g x@ValueOperand{}  (ValueMutable y)  = fmap ValueOperand (g <$> asOp x <*> asOp y)
+vmap2 _ g x@ValueOperand{}  y@ValueConstant{} = fmap ValueOperand (g <$> asOp x <*> asOp y)
+vmap2 _ g x@ValueConstant{} y@ValueOperand{}  = fmap ValueOperand (g <$> asOp x <*> asOp y)
+vmap2 _ g x@ValueConstant{} (ValueMutable y)  = fmap ValueOperand (g <$> asOp x <*> asOp y)
+vmap2 _ g (ValueMutable x)  y@ValueOperand{}  = fmap ValueOperand (g <$> asOp x <*> asOp y)
+vmap2 _ g (ValueMutable x)  y@ValueConstant{} = fmap ValueOperand (g <$> asOp x <*> asOp y)
+
+class Add (classification :: Classification) where
+  add
+    :: (ClassificationOf (Value (cx :<+>: cy) a) ~ classification)
+    => Value cx a
+    -> Value cy a
+    -> BasicBlock (Value (cx :<+>: cy) a)
+
+instance Add 'IntegerClass where
+ add = vmap2 f g where
+   f = Constant.Add False False
+   g x y = do
+    let instr = AST.Add False False x y []
+    name <- freshName
+    tell [name AST.:= instr]
+    return $ AST.LocalReference name
+
+instance Add 'FloatingPointClass where
+ add = vmap2 f g where
+   f = Constant.FAdd
+   g x y = do
+    let instr = AST.FAdd x y []
+    name <- freshName
+    tell [name AST.:= instr]
+    return $ AST.LocalReference name
 
 class Select (const :: Constness) where
   -- the condition constness must match the result constness. this implies that
