@@ -156,9 +156,9 @@ pushNamelessInstruction = pushNamedInstruction . AST.Do
 
 nameAndPushInstruction :: AST.Instruction -> BasicBlock AST.Name
 nameAndPushInstruction inst' = do
-  name <- freshName
-  pushNamedInstruction $ name AST.:= inst'
-  return name
+  n <- freshName
+  pushNamedInstruction $ n AST.:= inst'
+  return n
 
 newtype Module a = Module{runModule :: State ModuleState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState ModuleState)
@@ -201,16 +201,16 @@ newtype Globals a = Globals{runGlobals :: State [AST.Global] a}
 
 evalModule :: Module a -> (AST.Module, a)
 evalModule (Module a) = (m, a') where
-  m = AST.Module name Nothing Nothing defs
-  name = moduleName st'
+  m = AST.Module n Nothing Nothing defs
+  n = moduleName st'
   defs = moduleDefinitions st'
   st = ModuleState{moduleName = "unnamed module", moduleDefinitions = []}
   ~(a', st') = runState a st
 
 evalBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> FunctionDefinition (a, AST.BasicBlock)
-evalBasicBlock name bb = do
+evalBasicBlock n bb = do
   -- pattern match must be lazy to support the MonadFix instance
-  ~(Terminator a, st, instr) <- runRWST (runBasicBlock bb) () (BasicBlockState name Nothing)
+  ~(Terminator a, st, instr) <- runRWST (runBasicBlock bb) () (BasicBlockState n Nothing)
   return (a, AST.BasicBlock (basicBlockName st) instr (fromJust (basicBlockTerminator st)))
 
 evalConstantBasicBlock :: BasicBlock (Value 'Constant a) -> Value 'Constant a
@@ -269,7 +269,7 @@ signumSignedConst (ValueConstant x) = ValueConstant ig where
   lt = Constant.ICmp IntegerPredicate.SLT x (Constant.Int bits 0)
 
 signumUnsignedConst
-  :: forall a . (SingI (BitsOf (Value 'Constant a)), ClassificationOf (Value 'Constant a) ~ IntegerClass, Num (Value 'Constant a))
+  :: (SingI (BitsOf (Value 'Constant a)), ClassificationOf (Value 'Constant a) ~ IntegerClass, Num (Value 'Constant a))
   => Value 'Constant a
   -> Value 'Constant a
 signumUnsignedConst x = evalConstantBasicBlock $ do
