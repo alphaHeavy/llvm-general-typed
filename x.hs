@@ -155,19 +155,6 @@ instance FreshName FunctionDefinition where
     put $! st{functionDefinitionFreshId = fresh + 1}
     return $ AST.UnName fresh
 
-pushNamedInstruction :: AST.Named AST.Instruction -> BasicBlock ()
-pushNamedInstruction inst' = do
-  tell [inst']
-
-pushNamelessInstruction :: AST.Instruction -> BasicBlock ()
-pushNamelessInstruction = pushNamedInstruction . AST.Do
-
-nameAndPushInstruction :: AST.Instruction -> BasicBlock AST.Name
-nameAndPushInstruction inst' = do
-  n <- freshName
-  pushNamedInstruction $ n AST.:= inst'
-  return n
-
 newtype Module a = Module{runModule :: State ModuleState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState ModuleState)
 
@@ -227,46 +214,6 @@ evalConstantBasicBlock (BasicBlock v) =
   in fst $ evalState (runFunctionDefinition m) (FunctionDefinitionState [] 0)
 
 -- instance IsString (Value const String) where
-
-nameAndEmitInstruction1
-  :: (AST.Operand -> [t] -> AST.Instruction)
-  -> Value const x
-  -> Value 'Mutable a
-nameAndEmitInstruction1 instr =
-  apply $ \ x ->
-    nameInstruction $ instr x []
- where
-  apply
-    :: (AST.Operand -> BasicBlock AST.Operand)
-    -> Value const x
-    -> Value 'Mutable a
-  apply f (ValueOperand x)  = ValueOperand (x >>= f)
-  apply f (ValueConstant x) = apply f (ValueOperand . return $ AST.ConstantOperand x)
-  apply f (ValueMutable x)  = apply f x
-
-nameAndEmitInstruction2
-  :: (AST.Operand -> AST.Operand -> [t] -> AST.Instruction)
-  -> Value cx x
-  -> Value cy y
-  -> Value 'Mutable a
-nameAndEmitInstruction2 instr =
-  apply2 $ \ x y ->
-    nameInstruction $ instr x y []
- where
-  apply2
-    :: (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
-    -> Value cx x
-    -> Value cy y
-    -> Value 'Mutable a
-  apply2 f (ValueOperand x) (ValueOperand y) = ValueOperand . join $ f <$> x <*> y
-  apply2 f (ValueConstant x) y = apply2 f (ValueOperand . return $ AST.ConstantOperand x) y
-  apply2 f x (ValueConstant y) = apply2 f x (ValueOperand . return $ AST.ConstantOperand y)
-  apply2 f (ValueMutable x) y  = apply2 f x y
-  apply2 f x (ValueMutable y)  = apply2 f x y
-
-applyConstant2 :: (Constant.Constant -> Constant.Constant -> Constant.Constant) -> Value 'Constant a -> Value 'Constant a -> Value 'Constant a
-applyConstant2 instr (ValueConstant x) (ValueConstant y) =
-  ValueConstant (instr x y)
 
 signumSignedConst :: forall a . (SingI (BitsOf (Value 'Constant a))) => Value 'Constant a -> Value 'Constant a
 signumSignedConst (ValueConstant x) = ValueConstant ig where
@@ -491,8 +438,7 @@ instance Phi (Value const) where
       return (valOp, origin)
 
     let ty = valueType ([] :: [Value 'Mutable a])
-    n <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
-    return $! ValueOperand (return $ AST.LocalReference n)
+    ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
 
 instance Phi AnyValue where
   phi :: forall a . ValueOf (Value 'Mutable a) => [(AnyValue a, Label)] -> BasicBlock (Value 'Mutable a)
@@ -503,29 +449,27 @@ instance Phi AnyValue where
       return (valOp, origin)
 
     let ty = valueType ([] :: [Value 'Mutable a])
-    n <- nameAndPushInstruction $ AST.Phi ty incomingValues' []
-    return $! ValueOperand (return $ AST.LocalReference n)
+    ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
 
 alloca :: forall a . (ValueOf (Value 'Mutable a), SingI (ElementsOf (Value 'Mutable a))) => BasicBlock (Value 'Mutable (Ptr a))
 alloca = do
   let ty = valueType ([] :: [Value 'Mutable a])
       ne = fromSing (sing :: Sing (ElementsOf (Value 'Mutable a)))
   -- @TODO: the hardcoded 64 should probably be the target word size?
-  n <- nameAndPushInstruction $ AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
-  return $! ValueOperand (return $ AST.LocalReference n)
+      inst = AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
+  ValueOperand . return <$> nameInstruction inst
 
 load :: Value const (Ptr a) -> BasicBlock (Value 'Mutable a)
 load x = do
   x' <- asOp x
-  n <- nameAndPushInstruction $ AST.Load False x' Nothing 0 []
-  return $! ValueOperand (return (AST.LocalReference n))
+  ValueOperand . return <$> nameInstruction (AST.Load False x' Nothing 0 [])
 
 store :: Value cx (Ptr a) -> Value cy a -> BasicBlock ()
 store address value = do
   address' <- asOp address
   value' <- asOp value
   let instr = AST.Store False address' value' Nothing 0 []
-  void . pushNamedInstruction $ AST.Do instr
+  tell [AST.Do instr]
 
 type family ResultType a :: *
 
