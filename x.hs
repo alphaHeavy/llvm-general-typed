@@ -41,9 +41,9 @@ import LLVM.General.PrettyPrint (showPretty)
 
 data Constness = Constant | Mutable
 
-type family Min (x :: k) (y :: k) :: k where
-  Min 'Constant 'Constant = 'Constant
-  Min x         y         = 'Mutable
+type family Weakest (x :: k) (y :: k) :: k where
+  Weakest 'Constant 'Constant = 'Constant
+  Weakest x         y         = 'Mutable
 
 data Value (const :: Constness) (a :: *) where
   ValueMutable     :: Value 'Constant a      -> Value 'Mutable a
@@ -626,7 +626,7 @@ vmap2
   -> (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
   -> Value cx a
   -> Value cy b
-  -> BasicBlock (Value (Min cx cy) r)
+  -> BasicBlock (Value (Weakest cx cy) r)
 vmap2 f g = k where
   j :: Value cx a -> Value cy b -> BasicBlock (Value 'Mutable r)
   j x y = fmap ValueOperand (g <$> asOp x <*> asOp y)
@@ -645,13 +645,13 @@ vmap3
   -> Value cx a
   -> Value cy b
   -> Value cz c
-  -> BasicBlock (Value (cx `Min` cy `Min` cz) r)
+  -> BasicBlock (Value (cx `Weakest` cy `Weakest` cz) r)
 vmap3 f g = k where
   j :: Value cx a -> Value cy b -> Value cz c -> BasicBlock (Value 'Mutable r)
   j x y z = fmap ValueOperand (g <$> asOp x <*> asOp y <*> asOp z)
   k (ValueConstant x) (ValueConstant y) (ValueConstant z) = return $ ValueConstant (f x y z)
   k (ValueMutable x)  (ValueMutable y)  (ValueMutable z)  = weaken <$> vmap3 f g x y z
-  -- prepare to experience many pleasures of the GADT
+  -- prove we're dealing with a mutable result type
   k x@ValueOperand{} y z = j x y z
   k x y@ValueOperand{} z = j x y z
   k x y z@ValueOperand{} = j x y z
@@ -661,10 +661,10 @@ vmap3 f g = k where
 
 class Add (classification :: Classification) where
   add
-    :: (ClassificationOf (Value (Min cx cy) a) ~ classification)
+    :: (ClassificationOf (Value (Weakest cx cy) a) ~ classification)
     => Value cx a
     -> Value cy a
-    -> BasicBlock (Value (Min cx cy) a)
+    -> BasicBlock (Value (Weakest cx cy) a)
 
 instance Add 'IntegerClass where
  add = vmap2 f g where
@@ -684,37 +684,37 @@ select
   :: Value cc Bool
   -> Value ct a
   -> Value cf a
-  -> BasicBlock (Value (cc `Min` ct `Min` cf) a)
+  -> BasicBlock (Value (cc `Weakest` ct `Weakest` cf) a)
 select = vmap3 f g where
   f = Constant.Select
   g c t f = nameInstruction $ AST.Select c t f []
 
 icmp
-  :: (ClassificationOf (Value (Min cx cy) a) ~ IntegerClass)
+  :: (ClassificationOf (Value (Weakest cx cy) a) ~ IntegerClass)
   => IntegerPredicate.IntegerPredicate
   -> Value cx a
   -> Value cy a
-  -> BasicBlock (Value (Min cx cy) Bool)
+  -> BasicBlock (Value (Weakest cx cy) Bool)
 icmp p = vmap2 f g where
   f = Constant.ICmp p
   g x y = nameInstruction $ AST.ICmp p x y []
 
 fcmp
-  :: (ClassificationOf (Value (Min cx cy) a) ~ FloatingPointClass)
+  :: (ClassificationOf (Value (Weakest cx cy) a) ~ FloatingPointClass)
   => FloatingPointPredicate.FloatingPointPredicate
   -> Value cx a
   -> Value cy a
-  -> BasicBlock (Value (Min cx cy) Bool)
+  -> BasicBlock (Value (Weakest cx cy) Bool)
 fcmp p = vmap2 f g where
   f = Constant.FCmp p
   g x y = nameInstruction $ AST.FCmp p x y []
 
 class Cmp (classification :: Classification) where
   cmp
-    :: (ClassificationOf (Value (Min cx cy) a) ~ classification)
+    :: (ClassificationOf (Value (Weakest cx cy) a) ~ classification)
     => Value cx a
     -> Value cy a
-    -> BasicBlock (Value (Min cx cy) Bool)
+    -> BasicBlock (Value (Weakest cx cy) Bool)
 
 instance Cmp 'IntegerClass where
   cmp = vmap2 f g where
