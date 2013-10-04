@@ -23,7 +23,6 @@ import Control.Monad
 import Control.Monad.Fix
 import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
-import Control.Monad.Writer.Lazy
 import Data.Int
 import Data.List as List
 import Data.Maybe (fromJust)
@@ -67,6 +66,15 @@ instance Weaken 'Constant where
 
 instance Weaken 'Mutable where
   weaken = id
+
+class InjectConstant (const :: Constness) where
+  injectConstant :: Constant.Constant -> Value const a
+
+instance InjectConstant 'Mutable where
+  injectConstant = ValueMutable . injectConstant
+
+instance InjectConstant 'Constant where
+  injectConstant = ValueConstant
 
 data Classification
   = IntegerClass
@@ -276,160 +284,93 @@ signumUnsignedConst x = evalConstantBasicBlock $ do
   gt <- icmp IntegerPredicate.UGT x (constant 0)
   select gt (constant 1) (constant 0)
 
-fromIntegerConst :: forall a . (SingI (BitsOf (Value 'Constant a))) => Integer -> Value 'Constant a
-fromIntegerConst = ValueConstant . Constant.Int bits where
- bits = fromIntegral $ fromSing (sing :: Sing (BitsOf (Value 'Constant a)))
+fromIntegerConst :: forall a const . (SingI (BitsOf (Value const a)), InjectConstant const) => Integer -> Value const a
+fromIntegerConst = injectConstant . Constant.Int bits where
+  bits = fromIntegral $ fromSing (sing :: Sing (BitsOf (Value const a)))
 
-instance Num (Value 'Constant Int8) where
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Float) where
+  fromInteger = injectConstant . Constant.Float . Float.Single . fromIntegral
+  (+) = vmap2 Constant.FAdd (nameInstruction2 AST.FAdd)
+  (-) = vmap2 Constant.FSub (nameInstruction2 AST.FSub)
+  (*) = vmap2 Constant.FMul (nameInstruction2 AST.FMul)
+
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Double) where
+  fromInteger = injectConstant . Constant.Float . Float.Double . fromIntegral
+  (+) = vmap2 Constant.FAdd (nameInstruction2 AST.FAdd)
+  (-) = vmap2 Constant.FSub (nameInstruction2 AST.FSub)
+  (*) = vmap2 Constant.FMul (nameInstruction2 AST.FMul)
+
+instance (InjectConstant const, Weakest const const ~ const, Num (Value const Float)) => Fractional (Value const Float) where
+  fromRational = injectConstant . Constant.Float . Float.Single . fromRational
+  (/) = vmap2 Constant.FDiv (nameInstruction2 AST.FDiv)
+
+instance (InjectConstant const, Weakest const const ~ const, Num (Value const Double)) => Fractional (Value const Double) where
+  fromRational = injectConstant . Constant.Float . Float.Double . fromRational
+  (/) = vmap2 Constant.FDiv (nameInstruction2 AST.FDiv)
+
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int8) where
   fromInteger = fromIntegerConst
-  abs = id
-  (+) = applyConstant2 (Constant.Add False False)
-  (-) = applyConstant2 (Constant.Sub False False)
-  (*) = applyConstant2 (Constant.Mul False False)
-  signum = signumSignedConst
-
-instance Num (Value 'Constant Int16) where
-  fromInteger = fromIntegerConst
-  abs = id
-  (+) = applyConstant2 (Constant.Add False False)
-  (-) = applyConstant2 (Constant.Sub False False)
-  (*) = applyConstant2 (Constant.Mul False False)
-  signum = signumSignedConst
-
-instance Num (Value 'Constant Int32) where
-  fromInteger = fromIntegerConst
-  abs = id
-  (+) = applyConstant2 (Constant.Add False False)
-  (-) = applyConstant2 (Constant.Sub False False)
-  (*) = applyConstant2 (Constant.Mul False False)
-  signum = signumSignedConst
-
-instance Num (Value 'Constant Int64) where
-  fromInteger = fromIntegerConst
-  abs = id
-  (+) = applyConstant2 (Constant.Add False False)
-  (-) = applyConstant2 (Constant.Sub False False)
-  (*) = applyConstant2 (Constant.Mul False False)
-  signum = signumSignedConst
-
-instance Num (Value 'Constant Word8) where
-  fromInteger = fromIntegerConst
-  abs = id
-  (+) = applyConstant2 (Constant.Add False False)
-  (-) = applyConstant2 (Constant.Sub False False)
-  (*) = applyConstant2 (Constant.Mul False False)
-  signum = signumUnsignedConst
-
-instance Num (Value 'Constant Word16) where
-  fromInteger = fromIntegerConst
-  abs = id
-  (+) = applyConstant2 (Constant.Add False False)
-  (-) = applyConstant2 (Constant.Sub False False)
-  (*) = applyConstant2 (Constant.Mul False False)
-  signum = signumUnsignedConst
-
-instance Num (Value 'Constant Word32) where
-  fromInteger = fromIntegerConst
-  abs = id
-  (+) = applyConstant2 (Constant.Add False False)
-  (-) = applyConstant2 (Constant.Sub False False)
-  (*) = applyConstant2 (Constant.Mul False False)
-  signum = signumUnsignedConst
-
-instance Num (Value 'Constant Word64) where
-  fromInteger = fromIntegerConst
-  abs = id
-  (+) = applyConstant2 (Constant.Add False False)
-  (-) = applyConstant2 (Constant.Sub False False)
-  (*) = applyConstant2 (Constant.Mul False False)
-  signum = signumUnsignedConst
-
-instance Num (Value 'Constant Float) where
-  fromInteger = ValueConstant . Constant.Float . Float.Single . fromIntegral
-  abs = id
-  (+) = applyConstant2 Constant.FAdd
-  (-) = applyConstant2 Constant.FSub
-  (*) = applyConstant2 Constant.FMul
+  -- abs = id
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
   -- signum = signumUnsignedConst
 
-instance Num (Value 'Constant Double) where
-  fromInteger = ValueConstant . Constant.Float . Float.Double . fromIntegral
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int16) where
+  fromInteger = fromIntegerConst
+  -- abs = id
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
+  -- signum = signumUnsignedConst
+
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int32) where
+  fromInteger = fromIntegerConst
+  -- abs = id
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
+  -- signum = signumUnsignedConst
+
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int64) where
+  fromInteger = fromIntegerConst
+  -- abs = id
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
+  -- signum = signumUnsignedConst
+
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Word8) where
+  fromInteger = fromIntegerConst
   abs = id
-  (+) = applyConstant2 Constant.FAdd
-  (-) = applyConstant2 Constant.FSub
-  (*) = applyConstant2 Constant.FMul
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
+  -- signum = signumUnsignedConst
 
-instance Fractional (Value 'Constant Float) where
-  fromRational = ValueConstant . Constant.Float . Float.Single . fromRational
-  (/) = applyConstant2 Constant.FDiv
-
-instance Fractional (Value 'Constant Double) where
-  fromRational = ValueConstant . Constant.Float . Float.Double . fromRational
-  (/) = applyConstant2 Constant.FDiv
-
-{-
-instance Num (Value 'Mutable Int8) where
-  fromInteger = ValueMutable . fromInteger
-
-instance Num (Value 'Mutable Int16) where
-  fromInteger = ValueMutable . fromInteger
-
-instance Num (Value 'Mutable Int32) where
-  fromInteger = ValueMutable . fromInteger
-
-instance Num (Value 'Mutable Int64) where
-  fromInteger = ValueMutable . fromInteger
--}
-
-instance Num (Value 'Mutable Word8) where
-  fromInteger = ValueMutable . fromInteger
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Word16) where
+  fromInteger = fromIntegerConst
   abs = id
-  (+) = nameAndEmitInstruction2 (AST.Add False False)
-  (-) = nameAndEmitInstruction2 (AST.Sub False False)
-  (*) = nameAndEmitInstruction2 (AST.Mul False False)
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
+  -- signum = signumUnsignedConst
 
-{-
-instance Num (Value 'Mutable Word16) where
-  fromInteger = ValueMutable . fromInteger
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Word32) where
+  fromInteger = fromIntegerConst
   abs = id
-  -- ValueConstant x + ValueConstant y = ValueConstant (Constant.Add False False x y)
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
+  -- signum = signumUnsignedConst
 
-instance Num (Value 'Mutable Word32) where
-  fromInteger = ValueMutable . fromInteger
+instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Word64) where
+  fromInteger = fromIntegerConst
   abs = id
-  -- ValueConstant x + ValueConstant y = ValueConstant (Constant.Add False False x y)
-
-instance Num (Value 'Mutable Word64) where
-  fromInteger = ValueMutable . fromInteger
-  abs = id
-  (+) = apply $ \ x y -> ValueOperand $ do
-          name <- get
-          put $! name + 1
-          tell [LLVM.Add False False x y []]
-          return $ LLVM.LocalReference (LLVM.UnName name)
--}
-
-instance Num (Value 'Mutable Float) where
-  fromInteger = ValueMutable . fromInteger
-  abs = id
-  (+) = nameAndEmitInstruction2 AST.FAdd
-  (-) = nameAndEmitInstruction2 AST.FSub
-  (*) = nameAndEmitInstruction2 AST.FMul
-
-instance Num (Value 'Mutable Double) where
-  fromInteger = ValueMutable . fromInteger
-  abs = id
-  (+) = nameAndEmitInstruction2 AST.FAdd
-  (-) = nameAndEmitInstruction2 AST.FSub
-  (*) = nameAndEmitInstruction2 AST.FMul
-
-instance Fractional (Value 'Mutable Float) where
-  fromRational = ValueMutable . fromRational
-  (/) = nameAndEmitInstruction2 AST.FDiv
-
-instance Fractional (Value 'Mutable Double) where
-  fromRational = ValueMutable . fromRational
-  (/) = nameAndEmitInstruction2 AST.FDiv
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
+  -- signum = signumUnsignedConst
 
 namedModule :: String -> Globals a -> Module a
 namedModule n body = do
@@ -597,35 +538,61 @@ nameInstruction instr = do
   tell [n AST.:= instr]
   return $ AST.LocalReference n
 
+nameInstruction2
+  :: (AST.Operand -> AST.Operand -> AST.InstructionMetadata -> AST.Instruction)
+  -> AST.Operand
+  -> AST.Operand
+  -> BasicBlock AST.Operand
+nameInstruction2 f x y = nameInstruction (f x y [])
+
 trunc
   :: forall a b const .
      (ClassificationOf (Value const a) ~ IntegerClass, ClassificationOf (Value const b) ~ IntegerClass
      ,ValueOf (Value const b)
-     ,BitsOf (Value const b) + 1 <= BitsOf (Value const a))
+     ,BitsOf (Value const b) + 1 <= BitsOf (Value const a)
+     ,ValueJoin const)
   => Value const a
   -> BasicBlock (Value const b)
-trunc = vmap1 f g where
+trunc = vmap1' f g where
   vt = valueType ([] :: [Value const b])
   f v = Constant.Trunc v vt
   g v = nameInstruction $ AST.Trunc v vt []
 
 bitcast
-  :: forall a b const . (BitsOf (Value const a) ~ BitsOf (Value const b), ValueOf (Value const b))
+  :: forall a b const . (BitsOf (Value const a) ~ BitsOf (Value const b), ValueOf (Value const b), ValueJoin const)
   => Value const a
   -> BasicBlock (Value const b)
-bitcast = vmap1 f g where
+bitcast = vmap1' f g where
   vt = valueType ([] :: [Value const b])
   f v = Constant.BitCast v vt
   g v = nameInstruction $ AST.BitCast v vt []
+
+class ValueJoin (const :: Constness) where
+  vjoin :: Value const a -> BasicBlock (Value const a)
+
+instance ValueJoin 'Mutable where
+  vjoin (ValueOperand a) = a >>= return . ValueOperand . return
+  vjoin a = return a
+
+instance ValueJoin 'Constant where
+  vjoin a = return a
 
 vmap1
   :: (Constant.Constant -> Constant.Constant)
   -> (AST.Operand -> BasicBlock AST.Operand)
   -> Value const a
+  -> Value const b
+vmap1 f _ (ValueConstant x) = ValueConstant (f x)
+vmap1 f g (ValueMutable x)  = weaken (vmap1 f g x)
+vmap1 _ g x@ValueOperand{}  = ValueOperand (join (g <$> asOp x))
+
+vmap1'
+  :: (ValueJoin const)
+  => (Constant.Constant -> Constant.Constant)
+  -> (AST.Operand -> BasicBlock AST.Operand)
+  -> Value const a
   -> BasicBlock (Value const b)
-vmap1 f _ (ValueConstant x) = return $ ValueConstant (f x)
-vmap1 f g (ValueMutable x)  = weaken <$> vmap1 f g x
-vmap1 _ g x@ValueOperand{}  = fmap ValueOperand (g <$> asOp x)
+vmap1' f g a = vjoin (vmap1 f g a)
 
 vmap2
   :: forall a b cx cy r .
@@ -633,17 +600,26 @@ vmap2
   -> (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
   -> Value cx a
   -> Value cy b
-  -> BasicBlock (Value (Weakest cx cy) r)
+  -> Value (Weakest cx cy) r
 vmap2 f g = k where
-  j :: Value cx a -> Value cy b -> BasicBlock (Value 'Mutable r)
-  j x y = fmap ValueOperand (g <$> asOp x <*> asOp y)
-  k (ValueConstant x) (ValueConstant y) = return $ ValueConstant (f x y)
-  k (ValueMutable x)  (ValueMutable y)  = weaken <$> vmap2 f g x y
+  j :: Value cx a -> Value cy b -> Value 'Mutable r
+  j x y = ValueOperand (join (g <$> asOp x <*> asOp y))
+  k (ValueConstant x) (ValueConstant y) = ValueConstant (f x y)
+  k (ValueMutable x)  (ValueMutable y)  = weaken (vmap2 f g x y)
   -- prepare to experience many pleasures of the GADT
   k x@ValueOperand{} y = j x y
   k x y@ValueOperand{} = j x y
   k x@ValueMutable{} y = j x y
   k x y@ValueMutable{} = j x y
+
+vmap2'
+  :: (ValueJoin (Weakest cx cy))
+  => (Constant.Constant -> Constant.Constant -> Constant.Constant)
+  -> (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
+  -> Value cx a
+  -> Value cy b
+  -> BasicBlock (Value (Weakest cx cy) r)
+vmap2' f g a b = vjoin (vmap2 f g a b)
 
 vmap3
   :: forall a b c cx cy cz r .
@@ -652,12 +628,12 @@ vmap3
   -> Value cx a
   -> Value cy b
   -> Value cz c
-  -> BasicBlock (Value (cx `Weakest` cy `Weakest` cz) r)
+  -> Value (cx `Weakest` cy `Weakest` cz) r
 vmap3 f g = k where
-  j :: Value cx a -> Value cy b -> Value cz c -> BasicBlock (Value 'Mutable r)
-  j x y z = fmap ValueOperand (g <$> asOp x <*> asOp y <*> asOp z)
-  k (ValueConstant x) (ValueConstant y) (ValueConstant z) = return $ ValueConstant (f x y z)
-  k (ValueMutable x)  (ValueMutable y)  (ValueMutable z)  = weaken <$> vmap3 f g x y z
+  j :: Value cx a -> Value cy b -> Value cz c -> Value 'Mutable r
+  j x y z = ValueOperand (join (g <$> asOp x <*> asOp y <*> asOp z))
+  k (ValueConstant x) (ValueConstant y) (ValueConstant z) = ValueConstant (f x y z)
+  k (ValueMutable x)  (ValueMutable y)  (ValueMutable z)  = weaken (vmap3 f g x y z)
   -- prove we're dealing with a mutable result type
   k x@ValueOperand{} y z = j x y z
   k x y@ValueOperand{} z = j x y z
@@ -666,20 +642,30 @@ vmap3 f g = k where
   k x y@ValueMutable{} z = j x y z
   k x y z@ValueMutable{} = j x y z
 
+vmap3'
+  :: (ValueJoin (cx `Weakest` cy `Weakest` cz))
+  => (Constant.Constant -> Constant.Constant -> Constant.Constant -> Constant.Constant)
+  -> (AST.Operand -> AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
+  -> Value cx a
+  -> Value cy b
+  -> Value cz c
+  -> BasicBlock (Value (cx `Weakest` cy `Weakest` cz) r)
+vmap3' f g a b c = vjoin (vmap3 f g a b c)
+
 class Add (classification :: Classification) where
   add
-    :: (ClassificationOf (Value (Weakest cx cy) a) ~ classification)
+    :: (ClassificationOf (Value (Weakest cx cy) a) ~ classification, ValueJoin (Weakest cx cy))
     => Value cx a
     -> Value cy a
     -> BasicBlock (Value (Weakest cx cy) a)
 
 instance Add 'IntegerClass where
- add = vmap2 f g where
+ add = vmap2' f g where
    f = Constant.Add False False
    g x y = nameInstruction $ AST.Add False False x y []
 
 instance Add 'FloatingPointClass where
- add = vmap2 f g where
+ add = vmap2' f g where
    f = Constant.FAdd
    g x y = nameInstruction $ AST.FAdd x y []
 
@@ -688,48 +674,49 @@ instance Add 'FloatingPointClass where
 -- a constant. if you want a constant condition but mutable values (for some reason...)
 -- just wrap the condition with 'mutable'
 select
-  :: Value cc Bool
+  :: (ValueJoin (cc `Weakest` ct `Weakest` cf))
+  => Value cc Bool
   -> Value ct a
   -> Value cf a
   -> BasicBlock (Value (cc `Weakest` ct `Weakest` cf) a)
-select = vmap3 f g where
+select = vmap3' f g where
   f = Constant.Select
-  g c t f = nameInstruction $ AST.Select c t f []
+  g c t f' = nameInstruction $ AST.Select c t f' []
 
 icmp
-  :: (ClassificationOf (Value (Weakest cx cy) a) ~ IntegerClass)
+  :: (ClassificationOf (Value (Weakest cx cy) a) ~ IntegerClass, ValueJoin (Weakest cx cy))
   => IntegerPredicate.IntegerPredicate
   -> Value cx a
   -> Value cy a
   -> BasicBlock (Value (Weakest cx cy) Bool)
-icmp p = vmap2 f g where
+icmp p = vmap2' f g where
   f = Constant.ICmp p
   g x y = nameInstruction $ AST.ICmp p x y []
 
 fcmp
-  :: (ClassificationOf (Value (Weakest cx cy) a) ~ FloatingPointClass)
+  :: (ClassificationOf (Value (Weakest cx cy) a) ~ FloatingPointClass, ValueJoin (Weakest cx cy))
   => FloatingPointPredicate.FloatingPointPredicate
   -> Value cx a
   -> Value cy a
   -> BasicBlock (Value (Weakest cx cy) Bool)
-fcmp p = vmap2 f g where
+fcmp p = vmap2' f g where
   f = Constant.FCmp p
   g x y = nameInstruction $ AST.FCmp p x y []
 
 class Cmp (classification :: Classification) where
   cmp
-    :: (ClassificationOf (Value (Weakest cx cy) a) ~ classification)
+    :: (ClassificationOf (Value (Weakest cx cy) a) ~ classification, ValueJoin (Weakest cx cy))
     => Value cx a
     -> Value cy a
     -> BasicBlock (Value (Weakest cx cy) Bool)
 
 instance Cmp 'IntegerClass where
-  cmp = vmap2 f g where
+  cmp = vmap2' f g where
     f = Constant.ICmp IntegerPredicate.EQ
     g x y = nameInstruction $ AST.ICmp IntegerPredicate.EQ x y []
 
 instance Cmp 'FloatingPointClass where
-  cmp = vmap2 f g where
+  cmp = vmap2' f g where
     f = Constant.FCmp FloatingPointPredicate.OEQ
     g x y = nameInstruction $ AST.FCmp FloatingPointPredicate.OEQ x y []
 
