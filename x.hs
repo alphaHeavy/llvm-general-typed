@@ -213,6 +213,11 @@ evalBasicBlock name bb = do
   ~(Terminator a, st, instr) <- runRWST (runBasicBlock bb) () (BasicBlockState name Nothing)
   return (a, AST.BasicBlock (basicBlockName st) instr (fromJust (basicBlockTerminator st)))
 
+evalConstantBasicBlock :: BasicBlock (Value 'Constant a) -> Value 'Constant a
+evalConstantBasicBlock (BasicBlock v) =
+  let m = evalRWST v () (BasicBlockState (error "name") Nothing)
+  in fst $ evalState (runFunctionDefinition m) (FunctionDefinitionState [] 0)
+
 -- instance IsString (Value const String) where
 
 nameAndEmitInstruction1
@@ -263,11 +268,13 @@ signumSignedConst (ValueConstant x) = ValueConstant ig where
   gt = Constant.ICmp IntegerPredicate.SGT x (Constant.Int bits 0)
   lt = Constant.ICmp IntegerPredicate.SLT x (Constant.Int bits 0)
 
-signumUnsignedConst :: forall a . (SingI (BitsOf (Value 'Constant a))) => Value 'Constant a -> Value 'Constant a
-signumUnsignedConst (ValueConstant x) = ValueConstant ig where
-  bits = fromIntegral (fromSing (sing :: Sing (BitsOf (Value 'Constant a))))
-  ig = Constant.Select gt (Constant.Int bits 1) (Constant.Int bits 0)
-  gt = Constant.ICmp IntegerPredicate.UGT x (Constant.Int bits 0)
+signumUnsignedConst
+  :: forall a . (SingI (BitsOf (Value 'Constant a)), ClassificationOf (Value 'Constant a) ~ IntegerClass, Num (Value 'Constant a))
+  => Value 'Constant a
+  -> Value 'Constant a
+signumUnsignedConst x = evalConstantBasicBlock $ do
+  gt <- icmp IntegerPredicate.UGT x (constant 0)
+  select gt (constant 1) (constant 0)
 
 fromIntegerConst :: forall a . (SingI (BitsOf (Value 'Constant a))) => Integer -> Value 'Constant a
 fromIntegerConst = ValueConstant . Constant.Int bits where
