@@ -285,11 +285,50 @@ signumFloating v =
     => Value const a
     -> BasicBlock (Value const a)
   f x = do
-    gt <- fcmp FloatingPointPredicate.UGT x (0 :: Value const a)
-    lt <- fcmp FloatingPointPredicate.ULT x (0 :: Value const a)
+    gt <- fcmp FloatingPointPredicate.OGT x (0 :: Value const a)
+    lt <- fcmp FloatingPointPredicate.OLT x (0 :: Value const a)
     il <- select lt (-1 :: Value const a) (0 :: Value const a)
-    ig <- select gt ( 1 :: Value const a) il
-    return ig
+    select gt ( 1 :: Value const a) il
+
+absSigned
+  :: forall const a .
+     ( SingI (BitsOf (Value const a))
+     , ClassificationOf (Value const a) ~ IntegerClass
+     , Num (Value const a))
+  => Value const a
+  -> Value const a
+absSigned v = do
+  case v of
+    x@ValueConstant{} -> evalConstantBasicBlock (f x)
+    x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
+    x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
+ where
+  f :: (ValueJoin const, Weakest const const ~ const)
+    => Value const a
+    -> BasicBlock (Value const a)
+  f x = do
+    gt <- icmp IntegerPredicate.SGT x (0 :: Value const a)
+    select gt (0 - x) x
+
+absFloating
+  :: forall const a .
+     ( SingI (BitsOf (Value const a))
+     , ClassificationOf (Value const a) ~ FloatingPointClass
+     , Num (Value const a))
+  => Value const a
+  -> Value const a
+absFloating v = do
+  case v of
+    x@ValueConstant{} -> evalConstantBasicBlock (f x)
+    x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
+    x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
+ where
+  f :: (ValueJoin const, Weakest const const ~ const)
+    => Value const a
+    -> BasicBlock (Value const a)
+  f x = do
+    gt <- fcmp FloatingPointPredicate.OGT x (0 :: Value const a)
+    select gt (0 - x) x
 
 fromIntegerConst
   :: forall a const . (SingI (BitsOf (Value const a)), InjectConstant const)
@@ -300,6 +339,7 @@ fromIntegerConst = injectConstant . Constant.Int bits where
 
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Float) where
   fromInteger = injectConstant . Constant.Float . Float.Single . fromIntegral
+  abs = absFloating
   (+) = vmap2 Constant.FAdd (nameInstruction2 AST.FAdd)
   (-) = vmap2 Constant.FSub (nameInstruction2 AST.FSub)
   (*) = vmap2 Constant.FMul (nameInstruction2 AST.FMul)
@@ -307,6 +347,7 @@ instance (InjectConstant const, Weakest const const ~ const) => Num (Value const
 
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Double) where
   fromInteger = injectConstant . Constant.Float . Float.Double . fromIntegral
+  abs = absFloating
   (+) = vmap2 Constant.FAdd (nameInstruction2 AST.FAdd)
   (-) = vmap2 Constant.FSub (nameInstruction2 AST.FSub)
   (*) = vmap2 Constant.FMul (nameInstruction2 AST.FMul)
@@ -322,7 +363,7 @@ instance (InjectConstant const, Weakest const const ~ const, Num (Value const Do
 
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int8) where
   fromInteger = fromIntegerConst
-  -- abs = id
+  abs = absSigned
   (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
   (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
   (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
@@ -330,7 +371,7 @@ instance (InjectConstant const, Weakest const const ~ const) => Num (Value const
 
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int16) where
   fromInteger = fromIntegerConst
-  -- abs = id
+  abs = absSigned
   (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
   (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
   (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
@@ -338,7 +379,7 @@ instance (InjectConstant const, Weakest const const ~ const) => Num (Value const
 
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int32) where
   fromInteger = fromIntegerConst
-  -- abs = id
+  abs = absSigned
   (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
   (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
   (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
@@ -346,7 +387,7 @@ instance (InjectConstant const, Weakest const const ~ const) => Num (Value const
 
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int64) where
   fromInteger = fromIntegerConst
-  -- abs = id
+  abs = absSigned
   (+) = vmap2 (Constant.Add False False) (nameInstruction2 (AST.Add False False))
   (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (AST.Sub False False))
   (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (AST.Mul False False))
