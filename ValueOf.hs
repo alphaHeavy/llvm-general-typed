@@ -70,4 +70,3 @@ instance ValueOf (Value const Double) where
   type WordsOf (Value const Double) = 8
   type ClassificationOf (Value const Double) = FloatingPointClass
   valueType _ = AST.FloatingPointType 64 AST.IEEE
-

@@ -68,13 +68,16 @@ instance ValueJoin 'Mutable where
 instance ValueJoin 'Constant where
   vjoin a = return a
 
-evalConstantBasicBlock :: BasicBlock (Value 'Constant a) -> Value 'Constant a
+evalConstantBasicBlock
+  :: BasicBlock (Value 'Constant a)
+  -> Value 'Constant a
 evalConstantBasicBlock (BasicBlock v) =
   let m = evalRWST v () (BasicBlockState (error "name") Nothing)
   in fst $ evalState (runFunctionDefinition m) (FunctionDefinitionState [] 0)
 
-asOp :: Value const a -> BasicBlock AST.Operand
+asOp
+  :: Value const a
+  -> BasicBlock AST.Operand
 asOp (ValueConstant x) = return $ AST.ConstantOperand x
 asOp (ValueMutable x) = asOp x
 asOp (ValueOperand x) = x
-

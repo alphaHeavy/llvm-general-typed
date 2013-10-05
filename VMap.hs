@@ -85,4 +85,3 @@ vmap3'
   -> Value cz c
   -> BasicBlock (Value (cx `Weakest` cy `Weakest` cz) r)
 vmap3' f g a b c = vjoin (vmap3 f g a b c)
-

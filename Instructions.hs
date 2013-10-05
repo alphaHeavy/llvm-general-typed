@@ -22,7 +22,10 @@ import Value
 import ValueOf
 import VMap
 
-ret :: ValueOf (Value const a) => Value const a -> BasicBlock (Terminator ())
+ret
+  :: ValueOf (Value const a)
+  => Value const a
+  -> BasicBlock (Terminator ())
 ret value = do
   -- name the value, emitting instructions as necessary
   valueOp <- asOp value
@@ -35,7 +38,11 @@ ret_ = do
   setTerminator $ AST.Ret Nothing []
   return $ Terminator ()
 
-condBr :: Value const Bool -> Label -> Label -> BasicBlock (Terminator ())
+condBr
+  :: Value const Bool
+  -> Label
+  -> Label
+  -> BasicBlock (Terminator ())
 condBr condition (Label trueDest) (Label falseDest) = do
   conditionOp <- asOp condition
   setTerminator $ AST.CondBr conditionOp trueDest falseDest []
@@ -47,8 +54,8 @@ br (Label dest) = do
   return $ Terminator ()
 
 switch
-  :: (ClassificationOf (Value const a)     ~ IntegerClass,
-      ClassificationOf (Value 'Constant a) ~ IntegerClass)
+  :: ( ClassificationOf (Value const a)     ~ IntegerClass,
+       ClassificationOf (Value 'Constant a) ~ IntegerClass)
   => Value const a
   -> Label -- default
   -> [(Value 'Constant a, Label)]
@@ -65,12 +72,16 @@ invoke = undefined
 
 resume = undefined
 
-unreachable :: BasicBlock (Terminator ())
+unreachable
+  :: BasicBlock (Terminator ())
 unreachable = do
   setTerminator $ AST.Unreachable []
   return $ Terminator ()
 
-undef :: forall a . ValueOf (Value 'Constant a) => BasicBlock (Value 'Constant a)
+undef
+  :: forall a .
+     ValueOf (Value 'Constant a)
+  => BasicBlock (Value 'Constant a)
 undef = do
   let val = Constant.Undef $ valueType ([] :: [Value 'Constant a])
   return $ ValueConstant val
@@ -100,7 +111,11 @@ instance Phi AnyValue where
     let ty = valueType ([] :: [Value 'Mutable a])
     ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
 
-alloca :: forall a . (ValueOf (Value 'Mutable a), SingI (ElementsOf (Value 'Mutable a))) => BasicBlock (Value 'Mutable (Ptr a))
+alloca
+  :: forall a .
+     ( ValueOf (Value 'Mutable a)
+     , SingI (ElementsOf (Value 'Mutable a)))
+  => BasicBlock (Value 'Mutable (Ptr a))
 alloca = do
   let ty = valueType ([] :: [Value 'Mutable a])
       ne = fromSing (sing :: Sing (ElementsOf (Value 'Mutable a)))
@@ -108,12 +123,17 @@ alloca = do
       inst = AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
   ValueOperand . return <$> nameInstruction inst
 
-load :: Value const (Ptr a) -> BasicBlock (Value 'Mutable a)
+load
+  :: Value const (Ptr a)
+  -> BasicBlock (Value 'Mutable a)
 load x = do
   x' <- asOp x
   ValueOperand . return <$> nameInstruction (AST.Load False x' Nothing 0 [])
 
-store :: Value cx (Ptr a) -> Value cy a -> BasicBlock ()
+store
+  :: Value cx (Ptr a)
+  -> Value cy a
+  -> BasicBlock ()
 store address value = do
   address' <- asOp address
   value' <- asOp value
@@ -150,10 +170,10 @@ name_ = undefined
 
 trunc
   :: forall a b const .
-     (ClassificationOf (Value const a) ~ IntegerClass, ClassificationOf (Value const b) ~ IntegerClass
-     ,ValueOf (Value const b)
-     ,BitsOf (Value const b) + 1 <= BitsOf (Value const a)
-     ,ValueJoin const)
+     ( ClassificationOf (Value const a) ~ IntegerClass, ClassificationOf (Value const b) ~ IntegerClass
+     , ValueOf (Value const b)
+     , BitsOf (Value const b) + 1 <= BitsOf (Value const a)
+     , ValueJoin const)
   => Value const a
   -> BasicBlock (Value const b)
 trunc = vmap1' f g where
@@ -162,7 +182,10 @@ trunc = vmap1' f g where
   g v = nameInstruction $ AST.Trunc v vt []
 
 bitcast
-  :: forall a b const . (BitsOf (Value const a) ~ BitsOf (Value const b), ValueOf (Value const b), ValueJoin const)
+  :: forall a b const .
+     ( BitsOf (Value const a) ~ BitsOf (Value const b)
+     , ValueOf (Value const b)
+     , ValueJoin const)
   => Value const a
   -> BasicBlock (Value const b)
 bitcast = vmap1' f g where
@@ -172,7 +195,8 @@ bitcast = vmap1' f g where
 
 class Add (classification :: Classification) where
   add
-    :: (ClassificationOf (Value (Weakest cx cy) a) ~ classification, ValueJoin (Weakest cx cy))
+    :: ( ClassificationOf (Value (Weakest cx cy) a) ~ classification
+       , ValueJoin (Weakest cx cy))
     => Value cx a
     -> Value cy a
     -> BasicBlock (Value (Weakest cx cy) a)
@@ -202,7 +226,8 @@ select = vmap3' f g where
   g c t f' = nameInstruction $ AST.Select c t f' []
 
 icmp
-  :: (ClassificationOf (Value (Weakest cx cy) a) ~ IntegerClass, ValueJoin (Weakest cx cy))
+  :: ( ClassificationOf (Value (Weakest cx cy) a) ~ IntegerClass
+     , ValueJoin (Weakest cx cy))
   => IntegerPredicate.IntegerPredicate
   -> Value cx a
   -> Value cy a
@@ -212,7 +237,8 @@ icmp p = vmap2' f g where
   g x y = nameInstruction $ AST.ICmp p x y []
 
 fcmp
-  :: (ClassificationOf (Value (Weakest cx cy) a) ~ FloatingPointClass, ValueJoin (Weakest cx cy))
+  :: ( ClassificationOf (Value (Weakest cx cy) a) ~ FloatingPointClass
+     , ValueJoin (Weakest cx cy))
   => FloatingPointPredicate.FloatingPointPredicate
   -> Value cx a
   -> Value cy a
@@ -223,7 +249,8 @@ fcmp p = vmap2' f g where
 
 class Cmp (classification :: Classification) where
   cmp
-    :: (ClassificationOf (Value (Weakest cx cy) a) ~ classification, ValueJoin (Weakest cx cy))
+    :: ( ClassificationOf (Value (Weakest cx cy) a) ~ classification
+       , ValueJoin (Weakest cx cy))
     => Value cx a
     -> Value cy a
     -> BasicBlock (Value (Weakest cx cy) Bool)
