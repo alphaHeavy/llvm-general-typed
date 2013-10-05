@@ -1,22 +1,6 @@
 {-# LANGUAGE DataKinds #-}
--- {-# LANGUAGE DeriveFunctor #-}
--- {-# LANGUAGE FlexibleContexts #-}
--- {-# LANGUAGE FlexibleInstances #-}
--- {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
--- {-# LANGUAGE InstanceSigs #-}
--- {-# LANGUAGE MultiParamTypeClasses #-}
--- {-# LANGUAGE NoMonomorphismRestriction #-}
--- {-# LANGUAGE KindSignatures #-}
--- {-# LANGUAGE PolyKinds #-}
--- {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecursiveDo #-}
--- {-# LANGUAGE ScopedTypeVariables #-}
--- {-# LANGUAGE StandaloneDeriving #-}
--- {-# LANGUAGE TypeFamilies #-}
--- {-# LANGUAGE TypeHoles #-}
--- {-# LANGUAGE TypeOperators #-}
--- {-# LANGUAGE UndecidableInstances #-}
 
 module Main where
 
@@ -30,8 +14,8 @@ import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Global as Global
 import LLVM.General.PrettyPrint (showPretty)
 
-import CallingConv
 import DefineBasicBlock
+import Function
 import FunctionDefinition
 import Instructions
 import Num ()
@@ -44,8 +28,6 @@ data ModuleState = ModuleState
   { moduleName        :: String
   , moduleDefinitions :: [AST.Definition]
   }
-
-data Function (cconv :: CallingConv) (a :: *)
 
 newtype Globals a = Globals{runGlobals :: State [AST.Global] a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState [AST.Global])

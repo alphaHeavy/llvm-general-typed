@@ -5,15 +5,15 @@ module VMap where
 import Control.Applicative
 import Control.Monad
 
-import qualified LLVM.General.AST as AST
-import qualified LLVM.General.AST.Constant as Constant
+import LLVM.General.AST (Operand)
+import LLVM.General.AST.Constant (Constant)
 
 import BasicBlock
 import Value
 
 vmap1
-  :: (Constant.Constant -> Constant.Constant)
-  -> (AST.Operand -> BasicBlock AST.Operand)
+  :: (Constant -> Constant)
+  -> (Operand -> BasicBlock Operand)
   -> Value const a
   -> Value const b
 vmap1 f _ (ValueConstant x) = ValueConstant (f x)
@@ -22,19 +22,19 @@ vmap1 _ g x@ValueOperand{}  = ValueOperand (join (g <$> asOp x))
 
 vmap1'
   :: (ValueJoin const)
-  => (Constant.Constant -> Constant.Constant)
-  -> (AST.Operand -> BasicBlock AST.Operand)
+  => (Constant -> Constant)
+  -> (Operand -> BasicBlock Operand)
   -> Value const a
   -> BasicBlock (Value const b)
 vmap1' f g a = vjoin (vmap1 f g a)
 
 vmap2
   :: forall a b cx cy r .
-     (Constant.Constant -> Constant.Constant -> Constant.Constant)
-  -> (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
+     (Constant -> Constant -> Constant)
+  -> (Operand -> Operand -> BasicBlock Operand)
   -> Value cx a
   -> Value cy b
-  -> Value (Weakest cx cy) r
+  -> Value (cx `Weakest` cy) r
 vmap2 f g = k where
   j :: Value cx a -> Value cy b -> Value 'Mutable r
   j x y = ValueOperand (join (g <$> asOp x <*> asOp y))
@@ -47,18 +47,18 @@ vmap2 f g = k where
   k x y@ValueMutable{} = j x y
 
 vmap2'
-  :: (ValueJoin (Weakest cx cy))
-  => (Constant.Constant -> Constant.Constant -> Constant.Constant)
-  -> (AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
+  :: (ValueJoin (cx `Weakest` cy))
+  => (Constant -> Constant -> Constant)
+  -> (Operand -> Operand -> BasicBlock Operand)
   -> Value cx a
   -> Value cy b
-  -> BasicBlock (Value (Weakest cx cy) r)
+  -> BasicBlock (Value (cx `Weakest` cy) r)
 vmap2' f g a b = vjoin (vmap2 f g a b)
 
 vmap3
   :: forall a b c cx cy cz r .
-     (Constant.Constant -> Constant.Constant -> Constant.Constant -> Constant.Constant)
-  -> (AST.Operand -> AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
+     (Constant -> Constant -> Constant -> Constant)
+  -> (Operand -> Operand -> Operand -> BasicBlock Operand)
   -> Value cx a
   -> Value cy b
   -> Value cz c
@@ -78,8 +78,8 @@ vmap3 f g = k where
 
 vmap3'
   :: (ValueJoin (cx `Weakest` cy `Weakest` cz))
-  => (Constant.Constant -> Constant.Constant -> Constant.Constant -> Constant.Constant)
-  -> (AST.Operand -> AST.Operand -> AST.Operand -> BasicBlock AST.Operand)
+  => (Constant -> Constant -> Constant -> Constant)
+  -> (Operand -> Operand -> Operand -> BasicBlock Operand)
   -> Value cx a
   -> Value cy b
   -> Value cz c

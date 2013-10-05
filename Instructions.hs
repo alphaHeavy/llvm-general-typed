@@ -195,11 +195,11 @@ bitcast = vmap1' f g where
 
 class Add (classification :: Classification) where
   add
-    :: ( ClassificationOf (Value (Weakest cx cy) a) ~ classification
-       , ValueJoin (Weakest cx cy))
+    :: ( ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
+       , ValueJoin (cx `Weakest` cy))
     => Value cx a
     -> Value cy a
-    -> BasicBlock (Value (Weakest cx cy) a)
+    -> BasicBlock (Value (cx `Weakest` cy) a)
 
 instance Add 'IntegerClass where
  add = vmap2' f g where
@@ -226,34 +226,34 @@ select = vmap3' f g where
   g c t f' = nameInstruction $ AST.Select c t f' []
 
 icmp
-  :: ( ClassificationOf (Value (Weakest cx cy) a) ~ IntegerClass
-     , ValueJoin (Weakest cx cy))
+  :: ( ClassificationOf (Value (cx `Weakest` cy) a) ~ IntegerClass
+     , ValueJoin (cx `Weakest` cy))
   => IntegerPredicate.IntegerPredicate
   -> Value cx a
   -> Value cy a
-  -> BasicBlock (Value (Weakest cx cy) Bool)
+  -> BasicBlock (Value (cx `Weakest` cy) Bool)
 icmp p = vmap2' f g where
   f = Constant.ICmp p
   g x y = nameInstruction $ AST.ICmp p x y []
 
 fcmp
-  :: ( ClassificationOf (Value (Weakest cx cy) a) ~ FloatingPointClass
-     , ValueJoin (Weakest cx cy))
+  :: ( ClassificationOf (Value (cx `Weakest` cy) a) ~ FloatingPointClass
+     , ValueJoin (cx `Weakest` cy))
   => FloatingPointPredicate.FloatingPointPredicate
   -> Value cx a
   -> Value cy a
-  -> BasicBlock (Value (Weakest cx cy) Bool)
+  -> BasicBlock (Value (cx `Weakest` cy) Bool)
 fcmp p = vmap2' f g where
   f = Constant.FCmp p
   g x y = nameInstruction $ AST.FCmp p x y []
 
 class Cmp (classification :: Classification) where
   cmp
-    :: ( ClassificationOf (Value (Weakest cx cy) a) ~ classification
-       , ValueJoin (Weakest cx cy))
+    :: ( ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
+       , ValueJoin (cx `Weakest` cy))
     => Value cx a
     -> Value cy a
-    -> BasicBlock (Value (Weakest cx cy) Bool)
+    -> BasicBlock (Value (cx `Weakest` cy) Bool)
 
 instance Cmp 'IntegerClass where
   cmp = vmap2' f g where

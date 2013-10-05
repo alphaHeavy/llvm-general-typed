@@ -12,6 +12,15 @@ import qualified LLVM.General.AST as AST
 
 import Value
 
+data Classification
+  = IntegerClass
+  | FloatingPointClass
+  | PointerClass
+  | VectorClass
+  | StructureClass
+  | LabelClass
+  | MetadataClass
+
 class ValueOf (a :: *) where
   type WordsOf a :: Nat
   type BitsOf a :: Nat

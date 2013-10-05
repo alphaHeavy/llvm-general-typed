@@ -49,15 +49,6 @@ instance InjectConstant 'Mutable where
 instance InjectConstant 'Constant where
   injectConstant = ValueConstant
 
-data Classification
-  = IntegerClass
-  | FloatingPointClass
-  | PointerClass
-  | VectorClass
-  | StructureClass
-  | LabelClass
-  | MetadataClass
-
 class ValueJoin (const :: Constness) where
   vjoin :: Value const a -> BasicBlock (Value const a)
 
