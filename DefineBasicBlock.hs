@@ -23,7 +23,7 @@ class DefineBasicBlock f where
 instance DefineBasicBlock FunctionDefinition where
   namedBasicBlock n bb = do
     ~FunctionDefinitionState{functionDefinitionBasicBlocks = originalBlocks} <- get
-    (_, newBlock) <- evalBasicBlock n bb
+    ~(_, newBlock) <- evalBasicBlock n bb
     ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = extraBlocks} <- get
     -- splice in the new block before any blocks defined while lifting
     put st{functionDefinitionBasicBlocks = originalBlocks <> (newBlock:List.drop (List.length originalBlocks) extraBlocks)}
