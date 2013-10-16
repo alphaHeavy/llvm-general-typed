@@ -1,10 +1,17 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Num where
 
 import Data.Int
+import Data.Proxy
 import Data.Word
 import GHC.TypeLits
 
@@ -23,7 +30,7 @@ import VMap
 
 signumSigned
   :: forall const a .
-     ( SingI (BitsOf (Value const a))
+     ( KnownNat (BitsOf (Value const a))
      , ClassificationOf (Value const a) ~ IntegerClass
      , Num (Value const a))
   => Value const a
@@ -46,7 +53,7 @@ signumSigned v =
 
 signumUnsigned
   :: forall const a .
-     ( SingI (BitsOf (Value const a))
+     ( KnownNat (BitsOf (Value const a))
      , ClassificationOf (Value const a) ~ IntegerClass
      , Num (Value const a))
   => Value const a
@@ -66,7 +73,7 @@ signumUnsigned v =
 
 signumFloating
   :: forall const a .
-     ( SingI (BitsOf (Value const a))
+     ( KnownNat (BitsOf (Value const a))
      , ClassificationOf (Value const a) ~ FloatingPointClass
      , Num (Value const a))
   => Value const a
@@ -88,7 +95,7 @@ signumFloating v =
 
 absSigned
   :: forall const a .
-     ( SingI (BitsOf (Value const a))
+     ( KnownNat (BitsOf (Value const a))
      , ClassificationOf (Value const a) ~ IntegerClass
      , Num (Value const a))
   => Value const a
@@ -108,7 +115,7 @@ absSigned v = do
 
 absFloating
   :: forall const a .
-     ( SingI (BitsOf (Value const a))
+     ( KnownNat (BitsOf (Value const a))
      , ClassificationOf (Value const a) ~ FloatingPointClass
      , Num (Value const a))
   => Value const a
@@ -127,11 +134,11 @@ absFloating v = do
     select gt (0 - x) x
 
 fromIntegerConst
-  :: forall a const . (SingI (BitsOf (Value const a)), InjectConstant const)
+  :: forall a const . (KnownNat (BitsOf (Value const a)), InjectConstant const)
   => Integer
   -> Value const a
 fromIntegerConst = injectConstant . Constant.Int bits where
-  bits = fromIntegral $ fromSing (sing :: Sing (BitsOf (Value const a)))
+  bits = fromIntegral $ natVal (Proxy :: Proxy (BitsOf (Value const a)))
 
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Float) where
   fromInteger = injectConstant . Constant.Float . Float.Single . fromIntegral

@@ -1,10 +1,17 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Instructions where
 
 import Control.Applicative
 import Control.Monad.RWS.Lazy
+import Data.Proxy
 import Data.Traversable
 import Foreign.Ptr (Ptr)
 import GHC.TypeLits
@@ -114,11 +121,11 @@ instance Phi AnyValue where
 alloca
   :: forall a .
      ( ValueOf (Value 'Mutable a)
-     , SingI (ElementsOf (Value 'Mutable a)))
+     , KnownNat (ElementsOf (Value 'Mutable a)))
   => BasicBlock (Value 'Mutable (Ptr a))
 alloca = do
   let ty = valueType ([] :: [Value 'Mutable a])
-      ne = fromSing (sing :: Sing (ElementsOf (Value 'Mutable a)))
+      ne = natVal (Proxy :: Proxy (ElementsOf (Value 'Mutable a)))
   -- @TODO: the hardcoded 64 should probably be the target word size?
       inst = AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
   ValueOperand . return <$> nameInstruction inst
@@ -140,6 +147,7 @@ store address value = do
   let instr = AST.Store False address' value' Nothing 0 []
   tell [AST.Do instr]
 
+{-
 type family ResultType a :: *
 
 class BundleArgs f where
@@ -148,6 +156,7 @@ class BundleArgs f where
 
 call :: Function cconv ty -> args -> BasicBlock (ResultType ty)
 call = error "call"
+-}
 
 class Name (const :: Constness) where
   name :: Value const a -> BasicBlock (Value const a)

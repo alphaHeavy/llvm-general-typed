@@ -1,3 +1,5 @@
+{-# LANGUAGE KindSignatures #-}
+
 module FreshName where
 
 import Control.Monad.RWS.Lazy
