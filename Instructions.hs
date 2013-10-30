@@ -90,7 +90,7 @@ undef
      ValueOf (Value 'Constant a)
   => BasicBlock (Value 'Constant a)
 undef = do
-  let val = Constant.Undef $ valueType ([] :: [Value 'Constant a])
+  let val = Constant.Undef $ valueType (Proxy :: Proxy (Value 'Constant a))
   return $ ValueConstant val
 
 class Phi (f :: * -> *) where
@@ -104,7 +104,7 @@ instance Phi (Value const) where
       valOp <- asOp val
       return (valOp, origin)
 
-    let ty = valueType ([] :: [Value 'Mutable a])
+    let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
     ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
 
 instance Phi AnyValue where
@@ -115,7 +115,7 @@ instance Phi AnyValue where
       valOp <- asOp val
       return (valOp, origin)
 
-    let ty = valueType ([] :: [Value 'Mutable a])
+    let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
     ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
 
 alloca
@@ -124,7 +124,7 @@ alloca
      , KnownNat (ElementsOf (Value 'Mutable a)))
   => BasicBlock (Value 'Mutable (Ptr a))
 alloca = do
-  let ty = valueType ([] :: [Value 'Mutable a])
+  let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
       ne = natVal (Proxy :: Proxy (ElementsOf (Value 'Mutable a)))
   -- @TODO: the hardcoded 64 should probably be the target word size?
       inst = AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
@@ -186,7 +186,7 @@ trunc
   => Value const a
   -> BasicBlock (Value const b)
 trunc = vmap1' f g where
-  vt = valueType ([] :: [Value const b])
+  vt = valueType (Proxy :: Proxy (Value const b))
   f v = Constant.Trunc v vt
   g v = nameInstruction $ AST.Trunc v vt []
 
@@ -198,7 +198,7 @@ bitcast
   => Value const a
   -> BasicBlock (Value const b)
 bitcast = vmap1' f g where
-  vt = valueType ([] :: [Value const b])
+  vt = valueType (Proxy :: Proxy (Value const b))
   f v = Constant.BitCast v vt
   g v = nameInstruction $ AST.BitCast v vt []
 
