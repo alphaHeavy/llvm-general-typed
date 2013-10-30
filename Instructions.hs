@@ -203,22 +203,30 @@ bitcast = vmap1' f g where
   g v = nameInstruction $ AST.BitCast v vt []
 
 class Add (classification :: Classification) where
-  add
-    :: ( ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
-       , ValueJoin (cx `Weakest` cy))
+  addv
+    :: ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
     => Value cx a
     -> Value cy a
-    -> BasicBlock (Value (cx `Weakest` cy) a)
+    -> Value (cx `Weakest` cy) a
 
 instance Add 'IntegerClass where
- add = vmap2' f g where
+ addv = vmap2 f g where
    f = Constant.Add False False
    g x y = nameInstruction $ AST.Add False False x y []
 
 instance Add 'FloatingPointClass where
- add = vmap2' f g where
+ addv = vmap2 f g where
    f = Constant.FAdd
    g x y = nameInstruction $ AST.FAdd x y []
+
+
+add
+  :: ( Add (ClassificationOf (Value (cx `Weakest` cy) a))
+     , ValueJoin (cx `Weakest` cy))
+  => Value cx a
+  -> Value cy a
+  -> BasicBlock (Value (cx `Weakest` cy) a)
+add x y = vjoin $ addv x y
 
 -- the condition constness must match the result constness. this implies that
 -- if both true and false values are constant the switch condition must also be
