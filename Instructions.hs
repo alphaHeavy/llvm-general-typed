@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -157,6 +158,36 @@ class BundleArgs f where
 call :: Function cconv ty -> args -> BasicBlock (ResultType ty)
 call = error "call"
 -}
+
+data InBounds
+  = InBounds
+  | OutOfBounds
+    deriving (Eq, Ord, Show)
+
+class GetElementPtr a (i :: [*]) where
+  type GetElementPtrType a i :: *
+  getElementIndex :: a -> proxy i -> [AST.Operand]
+
+getElementPtr
+  :: (GetElementPtr (Value const a) i, ValueJoin const)
+  => InBounds
+  -> Value const a
+  -> proxy i
+  -> BasicBlock (Value const (Ptr (GetElementPtrType a i)))
+getElementPtr bounds value indices =
+  let inbounds = case bounds of InBounds -> True; OutOfBounds -> False
+      idx = getElementIndex value indices
+      f y = Constant.GetElementPtr inbounds y [error "damn"]
+      g x = nameInstruction $ AST.GetElementPtr inbounds x idx []
+  in vmap1' f g value
+
+getElementPtr0
+  :: forall a const i proxy . (GetElementPtr (Value const a) (Proxy 0 ': i), ValueJoin const)
+  => InBounds
+  -> Value const a
+  -> proxy i
+  -> BasicBlock (Value const (Ptr (GetElementPtrType a (Proxy 0 ': i))))
+getElementPtr0 bounds val _ = getElementPtr bounds val (Proxy :: Proxy (Proxy 0 ': i))
 
 class Name (const :: Constness) where
   name :: Value const a -> BasicBlock (Value const a)
