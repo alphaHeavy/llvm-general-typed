@@ -15,6 +15,32 @@ build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.18
 
+library
+  default-language:
+    Haskell2010
+
+  exposed-modules:
+    AnyValue
+    BasicBlock
+    CallingConv
+    DefineBasicBlock
+    FreshName
+    Function
+    FunctionDefinition
+    Instructions
+    Num
+    VMap
+    Value
+    ValueOf
+
+  build-depends:
+    base >=4.7 && <4.8,
+    llvm-general,
+    llvm-general-pure,
+    void,
+    transformers,
+    mtl
+
 test-suite test
   default-language: Haskell2010
   type: exitcode-stdio-1.0
@@ -38,6 +64,13 @@ executable x
   main-is:             x.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >=4.7 && <4.8, llvm-general, llvm-general-pure, void, transformers, mtl
+  build-depends:
+    base >=4.7 && <4.8,
+    llvm-general,
+    llvm-general-pure,
+    llvm-general-typed,
+    void,
+    transformers,
+    mtl
   -- hs-source-dirs:      
   default-language:    Haskell2010
