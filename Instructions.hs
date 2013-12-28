@@ -202,6 +202,25 @@ instance (KnownNat x, GetElementPtr a (Proxy xs), x <= n) => GetElementPtr (Arra
   type GetElementPtrType (Array n a) (proxy (x ': xs)) = GetElementPtrType a (Proxy xs)
   getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy a) (Proxy :: Proxy xs)
 
+-- |
+-- Following the conventions of LLVM's getelementptr instruction,
+-- getElementPtr supports indexing into @'Value's@ of 'Ptr', 'Struct',
+-- 'Array' and 'Vector'. Indexing into a 'Struct' requires a 'Nat'
+-- proxy to ensure the result type is known. If all index elements
+-- can be expressed as 'Nat' kinded types a promoted list can be used
+-- instead of a tuple.
+--
+-- See: <http://llvm.org/docs/LangRef.html#getelementptr-instruction>
+--
+-- @
+-- ('Proxy' :: 'Proxy' [0, 1, 2])
+-- @
+--
+-- or a mix of @'Value's@ and @'Nat' -> *@ proxies can be specified as tuples:
+--
+-- @
+-- (0 :: 'Value' 'Constant' 'Int32', 'Proxy' :: 'Proxy' 1, 2 :: 'Value' 'Constant' 'Int32')
+-- @
 getElementPtr
   :: forall a const index . (GetElementPtr a index, ValueJoin const)
   => InBounds
