@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -7,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Instructions where
 
@@ -164,23 +166,50 @@ data InBounds
   | OutOfBounds
     deriving (Eq, Ord, Show)
 
-class GetElementPtr a (i :: [*]) where
+class GetElementPtr a i where
   type GetElementPtrType a i :: *
-  getElementIndex :: a -> proxy i -> [AST.Operand]
+  getElementIndex :: proxy a -> i -> [AST.Operand]
+
+natOperand :: KnownNat n => proxy n -> AST.Operand
+natOperand = AST.ConstantOperand . Constant.Int 32 . natVal
+
+instance KnownNat x => GetElementPtr (Ptr a) (proxy '[x]) where
+  type GetElementPtrType (Ptr a) (proxy '[x]) = a
+  getElementIndex _ _ = [natOperand (Proxy :: Proxy x)]
+
+instance GetElementPtr (Ptr a) (proxy (x ': y ': xs)) where
+  type GetElementPtrType (Ptr a) (proxy (x ': y ': xs)) = Proxy "Attempting to index through a pointer"
+  getElementIndex _ _ = error "asdfasdf"
+
+instance GetElementPtr a (proxy '[]) where
+  type GetElementPtrType a (proxy '[]) = a
+  getElementIndex _ _ = []
+
+data Struct (xs :: [*])
+
+type family StructElement (a :: [*]) (n :: Nat) :: * where
+  StructElement (x ': xs) 0 = x
+  StructElement (x ': xs) n = StructElement xs (n - 1)
+  StructElement '[] n = Proxy "Attempting to index past end of structure"
+
+instance (KnownNat x, GetElementPtr (StructElement a x) (Proxy xs)) => GetElementPtr (Struct a) (proxy (x ': xs)) where
+  type GetElementPtrType (Struct a) (proxy (x ': xs)) = GetElementPtrType (StructElement a x) (proxy xs)
+  getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy (StructElement a x)) (Proxy :: Proxy xs)
 
 getElementPtr
-  :: (GetElementPtr (Value const a) i, ValueJoin const)
+  :: forall a const index . (GetElementPtr a index, ValueJoin const)
   => InBounds
   -> Value const a
-  -> proxy i
-  -> BasicBlock (Value const (Ptr (GetElementPtrType a i)))
+  -> index
+  -> BasicBlock (Value const (Ptr (GetElementPtrType a index)))
 getElementPtr bounds value indices =
   let inbounds = case bounds of InBounds -> True; OutOfBounds -> False
-      idx = getElementIndex value indices
+      idx = getElementIndex (Proxy :: Proxy a) indices
       f y = Constant.GetElementPtr inbounds y [error "damn"]
       g x = nameInstruction $ AST.GetElementPtr inbounds x idx []
   in vmap1' f g value
 
+{-
 getElementPtr0
   :: forall a const i proxy . (GetElementPtr (Value const a) (Proxy 0 ': i), ValueJoin const)
   => InBounds
@@ -188,6 +217,7 @@ getElementPtr0
   -> proxy i
   -> BasicBlock (Value const (Ptr (GetElementPtrType a (Proxy 0 ': i))))
 getElementPtr0 bounds val _ = getElementPtr bounds val (Proxy :: Proxy (Proxy 0 ': i))
+-}
 
 class Name (const :: Constness) where
   name :: Value const a -> BasicBlock (Value const a)
