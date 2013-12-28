@@ -173,15 +173,19 @@ class GetElementPtr a i where
 natOperand :: KnownNat n => proxy n -> AST.Operand
 natOperand = AST.ConstantOperand . Constant.Int 32 . natVal
 
+-- convienent names for testing
+type InvalidGetElementPtrIndexBoundsPtr = Proxy "Attempting to index through a pointer"
+type InvalidGetElementPtrIndexBoundsStruct = Proxy "Attempting to index past end of structure"
+
 instance KnownNat x => GetElementPtr (Ptr a) (proxy '[x]) where
   type GetElementPtrType (Ptr a) (proxy '[x]) = a
   getElementIndex _ _ = [natOperand (Proxy :: Proxy x)]
 
-instance GetElementPtr (Ptr a) (proxy (x ': y ': xs)) where
-  type GetElementPtrType (Ptr a) (proxy (x ': y ': xs)) = Proxy "Attempting to index through a pointer"
+instance GetElementPtr (Ptr a) (proxy ((x :: Nat) ': y ': xs)) where
+  type GetElementPtrType (Ptr a) (proxy (x ': y ': xs)) = InvalidGetElementPtrIndexBoundsPtr
   getElementIndex _ _ = error "asdfasdf"
 
-instance GetElementPtr a (proxy '[]) where
+instance GetElementPtr a ((proxy :: [Nat] -> *) '[]) where
   type GetElementPtrType a (proxy '[]) = a
   getElementIndex _ _ = []
 
@@ -190,10 +194,10 @@ data Struct (xs :: [*])
 type family StructElement (a :: [*]) (n :: Nat) :: * where
   StructElement (x ': xs) 0 = x
   StructElement (x ': xs) n = StructElement xs (n - 1)
-  StructElement '[] n = Proxy "Attempting to index past end of structure"
+  StructElement '[] n = InvalidGetElementPtrIndexBoundsStruct
 
 instance (KnownNat x, GetElementPtr (StructElement a x) (Proxy xs)) => GetElementPtr (Struct a) (proxy (x ': xs)) where
-  type GetElementPtrType (Struct a) (proxy (x ': xs)) = GetElementPtrType (StructElement a x) (proxy xs)
+  type GetElementPtrType (Struct a) (proxy (x ': xs)) = GetElementPtrType (StructElement a x) (Proxy xs)
   getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy (StructElement a x)) (Proxy :: Proxy xs)
 
 getElementPtr
