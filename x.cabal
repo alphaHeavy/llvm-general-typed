@@ -19,6 +19,9 @@ library
   default-language:
     Haskell2010
 
+  ghc-options:
+    -Wall
+
   exposed-modules:
     AnyValue
     BasicBlock
@@ -28,6 +31,7 @@ library
     Function
     FunctionDefinition
     Instructions
+    Module
     Num
     VMap
     Value
@@ -64,6 +68,13 @@ executable x
   main-is:             x.hs
   -- other-modules:       
   -- other-extensions:    
+
+  default-language:
+    Haskell2010
+
+  ghc-options:
+    -Wall
+
   build-depends:
     base >=4.7 && <4.8,
     llvm-general,
