@@ -9,6 +9,7 @@ module Value where
 
 import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
+import GHC.TypeLits (Nat)
 
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
@@ -26,6 +27,9 @@ data Value (const :: Constness) (a :: *) where
   ValueMutable     :: Value 'Constant a      -> Value 'Mutable a
   ValueOperand     :: BasicBlock AST.Operand -> Value 'Mutable a
   ValueConstant    :: Constant.Constant      -> Value 'Constant a
+
+data Struct (xs :: [*]) = Struct
+data Array (n :: Nat) (a :: *) = Array
 
 mutable :: Value 'Constant a -> Value 'Mutable a
 mutable = ValueMutable

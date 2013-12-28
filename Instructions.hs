@@ -189,8 +189,6 @@ instance GetElementPtr a ((proxy :: [Nat] -> *) '[]) where
   type GetElementPtrType a (proxy '[]) = a
   getElementIndex _ _ = []
 
-data Struct (xs :: [*])
-
 type family StructElement (a :: [*]) (n :: Nat) :: * where
   StructElement (x ': xs) 0 = x
   StructElement (x ': xs) n = StructElement xs (n - 1)
@@ -199,6 +197,10 @@ type family StructElement (a :: [*]) (n :: Nat) :: * where
 instance (KnownNat x, GetElementPtr (StructElement a x) (Proxy xs)) => GetElementPtr (Struct a) (proxy (x ': xs)) where
   type GetElementPtrType (Struct a) (proxy (x ': xs)) = GetElementPtrType (StructElement a x) (Proxy xs)
   getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy (StructElement a x)) (Proxy :: Proxy xs)
+
+instance (KnownNat x, GetElementPtr a (Proxy xs), x <= n) => GetElementPtr (Array n a) (proxy (x ': xs)) where
+  type GetElementPtrType (Array n a) (proxy (x ': xs)) = GetElementPtrType a (Proxy xs)
+  getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy a) (Proxy :: Proxy xs)
 
 getElementPtr
   :: forall a const index . (GetElementPtr a index, ValueJoin const)
