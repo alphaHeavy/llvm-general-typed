@@ -6,6 +6,7 @@ version:             0.1.0.0
 -- synopsis:            
 -- description:         
 -- license:             
+license:             BSD3
 license-file:        LICENSE
 author:              Nathan Howell
 maintainer:          nhowell@alphaheavy.com
@@ -14,6 +15,10 @@ maintainer:          nhowell@alphaheavy.com
 build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.18
+
+source-repository head
+  type: git
+  location: git://github.com/alphaHeavy/llvm-general-typed.git
 
 library
   default-language:
