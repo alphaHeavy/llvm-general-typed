@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -8,6 +9,7 @@
 module ValueOf where
 
 import Data.Int
+import Data.Proxy
 import Data.Word
 import GHC.TypeLits
 import qualified LLVM.General.AST as AST
@@ -81,3 +83,23 @@ instance ValueOf (Value const Double) where
   type WordsOf (Value const Double) = 8
   type ClassificationOf (Value const Double) = FloatingPointClass
   valueType _ = AST.FloatingPointType 64 AST.IEEE
+
+instance ValueOf (Value const (Struct '[])) where
+  type WordsOf (Value const (Struct '[])) = 0
+  type ClassificationOf (Value const (Struct '[])) = StructureClass
+  valueType _ = AST.FloatingPointType 64 AST.IEEE
+
+class StructureTypes a where
+  structureTypes :: proxy a -> [AST.Type]
+
+instance (ValueOf (Value const x), StructureTypes (Value const (Struct xs))) => StructureTypes (Value const (Struct (x ': xs))) where
+  structureTypes _ = valueType (Proxy :: Proxy (Value const x)) : structureTypes (Proxy :: Proxy (Value const (Struct xs)))
+
+instance StructureTypes (Value const (Struct '[])) where
+  structureTypes _ = []
+
+instance (ValueOf (Value const x), ValueOf (Value const (Struct xs)), StructureTypes (Value const (Struct (x ': xs)))) =>
+  ValueOf (Value const (Struct (x ': xs))) where
+  type WordsOf (Value const (Struct (x ': xs))) = WordsOf (Value const x) + WordsOf (Value const (Struct xs))
+  type ClassificationOf (Value const (Struct (x ': xs))) = StructureClass
+  valueType _ = AST.StructureType False (structureTypes (Proxy :: Proxy (Value const (Struct (x ': xs)))))
