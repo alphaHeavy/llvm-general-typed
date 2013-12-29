@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -52,8 +53,8 @@ getElementPtrTests = do
         namedModule "foo" $ do
           void . namedFunction "bar" $
             basicBlock $ do
-              structPtr :: Value 'Mutable (Ptr (Struct '[Int32, Int32])) <- alloca
-              memberPtr :: Value 'Mutable (Ptr Int32) <- getElementPtr InBounds structPtr (Proxy :: Proxy '[0, 0])
+              structPtr :: Value 'Mutable (Ptr (Struct '[Int32, Ptr Int32])) <- alloca
+              memberPtr :: Value 'Mutable (Ptr Int32) <- getElementPtr InBounds structPtr (Proxy :: Proxy '[0, 1, 0])
               val <- load memberPtr
               ret val
 

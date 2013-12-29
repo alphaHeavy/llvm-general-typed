@@ -11,8 +11,10 @@ module ValueOf where
 import Data.Int
 import Data.Proxy
 import Data.Word
+import Foreign.Ptr (Ptr)
 import GHC.TypeLits
 import qualified LLVM.General.AST as AST
+import qualified LLVM.General.AST.AddrSpace as AST
 
 import Value
 
@@ -83,6 +85,11 @@ instance ValueOf (Value const Double) where
   type WordsOf (Value const Double) = 8
   type ClassificationOf (Value const Double) = FloatingPointClass
   valueType _ = AST.FloatingPointType 64 AST.IEEE
+
+instance ValueOf (Value const a) => ValueOf (Value const (Ptr a)) where
+  type WordsOf (Value const (Ptr a)) = 8 -- TODO: sizeof ptr
+  type ClassificationOf (Value const (Ptr a)) = PointerClass
+  valueType _ = AST.PointerType (valueType (Proxy :: Proxy (Value const a))) (AST.AddrSpace 0)
 
 instance ValueOf (Value const (Struct '[])) where
   type WordsOf (Value const (Struct '[])) = 0

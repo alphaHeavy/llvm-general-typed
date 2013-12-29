@@ -179,7 +179,7 @@ type InvalidGetElementPtrIndexBoundsStruct = Proxy "Attempting to index past end
 
 instance (KnownNat x, GetElementPtr a (Proxy xs)) => GetElementPtr (Ptr a) (proxy (x ': xs)) where
   type GetElementPtrType (Ptr a) (proxy (x ': xs)) = GetElementPtrType a (Proxy xs)
-  getElementIndex _ _ = [natOperand (Proxy :: Proxy x)]
+  getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy a) (Proxy :: Proxy xs)
 
 instance GetElementPtr a ((proxy :: [Nat] -> *) '[]) where
   type GetElementPtrType a (proxy '[]) = a
