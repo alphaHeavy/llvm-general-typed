@@ -169,7 +169,7 @@ data InBounds
 
 class GetElementPtr a i where
   type GetElementPtrType a i :: *
-  getElementIndex :: proxy a -> i -> [AST.Operand]
+  getElementIndex :: proxy a -> i -> BasicBlock [AST.Operand]
 
 natOperand :: KnownNat n => proxy n -> AST.Operand
 natOperand = AST.ConstantOperand . Constant.Int 32 . natVal
@@ -180,11 +180,13 @@ type InvalidGetElementPtrIndexBoundsStruct = Proxy "Attempting to index past end
 
 instance (KnownNat x, GetElementPtr a (Proxy xs)) => GetElementPtr (Ptr a) (proxy (x ': xs)) where
   type GetElementPtrType (Ptr a) (proxy (x ': xs)) = GetElementPtrType a (Proxy xs)
-  getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy a) (Proxy :: Proxy xs)
+  getElementIndex _ _ = do
+    xs <- getElementIndex (Proxy :: Proxy a) (Proxy :: Proxy xs)
+    return $ natOperand (Proxy :: Proxy x) : xs
 
 instance GetElementPtr a ((proxy :: [Nat] -> *) '[]) where
   type GetElementPtrType a (proxy '[]) = a
-  getElementIndex _ _ = []
+  getElementIndex _ _ = return []
 
 type family StructElement (a :: [*]) (n :: Nat) :: * where
   StructElement (x ': xs) 0 = x
@@ -193,21 +195,25 @@ type family StructElement (a :: [*]) (n :: Nat) :: * where
 
 instance (KnownNat x, GetElementPtr (StructElement a x) (Proxy xs)) => GetElementPtr (Struct a) (proxy (x ': xs)) where
   type GetElementPtrType (Struct a) (proxy (x ': xs)) = GetElementPtrType (StructElement a x) (Proxy xs)
-  getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy (StructElement a x)) (Proxy :: Proxy xs)
+  getElementIndex _ _ = do
+    xs <- getElementIndex (Proxy :: Proxy (StructElement a x)) (Proxy :: Proxy xs)
+    return $ natOperand (Proxy :: Proxy x) : xs
 
 instance (KnownNat x, GetElementPtr a (Proxy xs), x <= n) => GetElementPtr (Array n a) (proxy (x ': xs)) where
   type GetElementPtrType (Array n a) (proxy (x ': xs)) = GetElementPtrType a (Proxy xs)
-  getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy a) (Proxy :: Proxy xs)
+  getElementIndex _ _ = do
+    xs <- getElementIndex (Proxy :: Proxy a) (Proxy :: Proxy xs)
+    return $ natOperand (Proxy :: Proxy x) : xs
 
 instance GetElementPtr (Array n a) (Value const i) where
   type GetElementPtrType (Array n a) (Value const i) = a
-  getElementIndex _ (ValueConstant c) = [AST.ConstantOperand c]
+  getElementIndex _ = fmap (:[]) . asOp
 
 newtype Index a = Index a
 
 class GGetElementPtr a i where
   type GGetElementPtrType a i :: *
-  ggetElementIndex :: proxy a -> i p -> [AST.Operand]
+  ggetElementIndex :: proxy a -> i p -> BasicBlock [AST.Operand]
 
 instance GGetElementPtr a f => GGetElementPtr a (M1 i c f) where
   type GGetElementPtrType a (M1 i c f) = GGetElementPtrType a f
@@ -215,7 +221,10 @@ instance GGetElementPtr a f => GGetElementPtr a (M1 i c f) where
 
 instance (GGetElementPtr a x, GGetElementPtr (GGetElementPtrType a x) y) => GGetElementPtr a (x :*: y) where
   type GGetElementPtrType a (x :*: y) = GGetElementPtrType (GGetElementPtrType a x) y
-  ggetElementIndex a (x :*: y) = ggetElementIndex a x ++ ggetElementIndex (Proxy :: Proxy (GGetElementPtrType a x)) y
+  ggetElementIndex a (x :*: y) = do
+    xs <- ggetElementIndex a x
+    ys <- ggetElementIndex (Proxy :: Proxy (GGetElementPtrType a x)) y
+    return $ xs ++ ys
 
 instance GetElementPtr a c => GGetElementPtr a (K1 i c) where
   type GGetElementPtrType a (K1 i c) = GetElementPtrType a c
@@ -250,12 +259,12 @@ getElementPtr
   -> Value const (Ptr a)
   -> index
   -> BasicBlock (Value const (Ptr (GetElementPtrType (Ptr a) index)))
-getElementPtr bounds value indices =
+getElementPtr bounds value indices = do
+  idx <- getElementIndex (Proxy :: Proxy (Ptr a)) indices
   let inbounds = case bounds of InBounds -> True; OutOfBounds -> False
-      idx = getElementIndex (Proxy :: Proxy (Ptr a)) indices
       f y = Constant.GetElementPtr inbounds y [error "damn"]
       g x = nameInstruction $ AST.GetElementPtr inbounds x idx []
-  in vmap1' f g value
+  vmap1' f g value
 
 {-
 getElementPtr0
