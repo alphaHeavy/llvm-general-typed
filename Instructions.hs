@@ -17,6 +17,7 @@ import Control.Monad.RWS.Lazy
 import Data.Proxy
 import Data.Traversable
 import Foreign.Ptr (Ptr)
+import GHC.Generics
 import GHC.TypeLits
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Attribute as Attribute
@@ -197,6 +198,32 @@ instance (KnownNat x, GetElementPtr (StructElement a x) (Proxy xs)) => GetElemen
 instance (KnownNat x, GetElementPtr a (Proxy xs), x <= n) => GetElementPtr (Array n a) (proxy (x ': xs)) where
   type GetElementPtrType (Array n a) (proxy (x ': xs)) = GetElementPtrType a (Proxy xs)
   getElementIndex _ _ = natOperand (Proxy :: Proxy x) : getElementIndex (Proxy :: Proxy a) (Proxy :: Proxy xs)
+
+instance GetElementPtr (Array n a) (Value const i) where
+  type GetElementPtrType (Array n a) (Value const i) = a
+  getElementIndex _ (ValueConstant c) = [AST.ConstantOperand c]
+
+newtype Index a = Index a
+
+class GGetElementPtr a i where
+  type GGetElementPtrType a i :: *
+  ggetElementIndex :: proxy a -> i p -> [AST.Operand]
+
+instance GGetElementPtr a f => GGetElementPtr a (M1 i c f) where
+  type GGetElementPtrType a (M1 i c f) = GGetElementPtrType a f
+  ggetElementIndex a (M1 f) = ggetElementIndex a f
+
+instance (GGetElementPtr a x, GGetElementPtr (GGetElementPtrType a x) y) => GGetElementPtr a (x :*: y) where
+  type GGetElementPtrType a (x :*: y) = GGetElementPtrType (GGetElementPtrType a x) y
+  ggetElementIndex a (x :*: y) = ggetElementIndex a x ++ ggetElementIndex (Proxy :: Proxy (GGetElementPtrType a x)) y
+
+instance GetElementPtr a c => GGetElementPtr a (K1 i c) where
+  type GGetElementPtrType a (K1 i c) = GetElementPtrType a c
+  ggetElementIndex a (K1 c) = getElementIndex a c
+
+instance (Generic idx, GGetElementPtr a (Rep idx)) => GetElementPtr a (Index idx) where
+  type GetElementPtrType a (Index idx) = GGetElementPtrType a (Rep idx)
+  getElementIndex a (Index idx) = ggetElementIndex a (from idx)
 
 -- |
 -- Following the conventions of LLVM's getelementptr instruction,
