@@ -184,6 +184,10 @@ instance (KnownNat x, GetElementPtr a (Proxy xs)) => GetElementPtr (Ptr a) (prox
     xs <- getElementIndex (Proxy :: Proxy a) (Proxy :: Proxy xs)
     return $ natOperand (Proxy :: Proxy x) : xs
 
+instance KnownNat x => GetElementPtr (Ptr a) (proxy x) where
+  type GetElementPtrType (Ptr a) (proxy x) = a
+  getElementIndex _ _ = return [natOperand (Proxy :: Proxy x)]
+
 instance GetElementPtr a ((proxy :: [Nat] -> *) '[]) where
   type GetElementPtrType a (proxy '[]) = a
   getElementIndex _ _ = return []
@@ -207,6 +211,10 @@ instance (KnownNat x, GetElementPtr a (Proxy xs), x <= n) => GetElementPtr (Arra
 
 instance GetElementPtr (Array n a) (Value const i) where
   type GetElementPtrType (Array n a) (Value const i) = a
+  getElementIndex _ = fmap (:[]) . asOp
+
+instance GetElementPtr (Ptr a) (Value const i) where
+  type GetElementPtrType (Ptr a) (Value const i) = a
   getElementIndex _ = fmap (:[]) . asOp
 
 newtype Index a = Index a
