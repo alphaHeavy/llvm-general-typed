@@ -14,6 +14,7 @@ import LLVM.General.AST.Constant (Constant)
 
 import BasicBlock
 import Value
+import ValueJoin
 
 vmap1
   :: (Constant -> Constant)
@@ -25,8 +26,7 @@ vmap1 f g (ValueMutable x)  = weaken (vmap1 f g x)
 vmap1 _ g x@ValueOperand{}  = ValueOperand (join (g <$> asOp x))
 
 vmap1'
-  :: (ValueJoin const)
-  => (Constant -> Constant)
+  :: (Constant -> Constant)
   -> (Operand -> BasicBlock Operand)
   -> Value const a
   -> BasicBlock (Value const b)
@@ -51,8 +51,7 @@ vmap2 f g = k where
   k x y@ValueMutable{} = j x y
 
 vmap2'
-  :: (ValueJoin (cx `Weakest` cy))
-  => (Constant -> Constant -> Constant)
+  :: (Constant -> Constant -> Constant)
   -> (Operand -> Operand -> BasicBlock Operand)
   -> Value cx a
   -> Value cy b
@@ -81,8 +80,7 @@ vmap3 f g = k where
   k x y z@ValueMutable{} = j x y z
 
 vmap3'
-  :: (ValueJoin (cx `Weakest` cy `Weakest` cz))
-  => (Constant -> Constant -> Constant -> Constant)
+  :: (Constant -> Constant -> Constant -> Constant)
   -> (Operand -> Operand -> Operand -> BasicBlock Operand)
   -> Value cx a
   -> Value cy b

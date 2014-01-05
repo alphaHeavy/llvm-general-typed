@@ -55,16 +55,6 @@ instance InjectConstant 'Mutable where
 instance InjectConstant 'Constant where
   injectConstant = ValueConstant
 
-class ValueJoin (const :: Constness) where
-  vjoin :: Value const a -> BasicBlock (Value const a)
-
-instance ValueJoin 'Mutable where
-  vjoin (ValueOperand a) = a >>= return . ValueOperand . return
-  vjoin a = return a
-
-instance ValueJoin 'Constant where
-  vjoin a = return a
-
 evalConstantBasicBlock
   :: BasicBlock (Value 'Constant a)
   -> Value 'Constant a

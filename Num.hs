@@ -41,7 +41,7 @@ signumSigned v =
     x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
     x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
  where
-  f :: (ValueJoin const, Weakest const const ~ const)
+  f :: (Weakest const const ~ const)
     => Value const a
     -> BasicBlock (Value const a)
   f x = do
@@ -64,7 +64,7 @@ signumUnsigned v =
     x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
     x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
  where
-  f :: (ValueJoin const, Weakest const const ~ const)
+  f :: (Weakest const const ~ const)
     => Value const a
     -> BasicBlock (Value const a)
   f x = do
@@ -84,7 +84,7 @@ signumFloating v =
     x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
     x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
  where
-  f :: (ValueJoin const, Weakest const const ~ const)
+  f :: (Weakest const const ~ const)
     => Value const a
     -> BasicBlock (Value const a)
   f x = do
@@ -106,7 +106,7 @@ absSigned v = do
     x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
     x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
  where
-  f :: (ValueJoin const, Weakest const const ~ const)
+  f :: (Weakest const const ~ const)
     => Value const a
     -> BasicBlock (Value const a)
   f x = do
@@ -126,7 +126,7 @@ absFloating v = do
     x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
     x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
  where
-  f :: (ValueJoin const, Weakest const const ~ const)
+  f :: (Weakest const const ~ const)
     => Value const a
     -> BasicBlock (Value const a)
   f x = do

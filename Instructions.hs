@@ -30,6 +30,7 @@ import BasicBlock
 import FreshName
 import Function
 import Value
+import ValueJoin
 import ValueOf
 import VMap
 
@@ -307,8 +308,7 @@ trunc
   :: forall a b const .
      ( ClassificationOf (Value const a) ~ IntegerClass, ClassificationOf (Value const b) ~ IntegerClass
      , ValueOf (Value const b)
-     , BitsOf (Value const b) + 1 <= BitsOf (Value const a)
-     , ValueJoin const)
+     , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
   => Value const a
   -> BasicBlock (Value const b)
 trunc = vmap1' f g where
@@ -319,8 +319,7 @@ trunc = vmap1' f g where
 bitcast
   :: forall a b const .
      ( BitsOf (Value const a) ~ BitsOf (Value const b)
-     , ValueOf (Value const b)
-     , ValueJoin const)
+     , ValueOf (Value const b))
   => Value const a
   -> BasicBlock (Value const b)
 bitcast = vmap1' f g where
@@ -347,8 +346,7 @@ instance Add 'FloatingPointClass where
 
 
 add
-  :: ( Add (ClassificationOf (Value (cx `Weakest` cy) a))
-     , ValueJoin (cx `Weakest` cy))
+  :: (Add (ClassificationOf (Value (cx `Weakest` cy) a)))
   => Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx `Weakest` cy) a)
@@ -359,8 +357,7 @@ add x y = vjoin $ vadd x y
 -- a constant. if you want a constant condition but mutable values (for some reason...)
 -- just wrap the condition with 'mutable'
 select
-  :: (ValueJoin (cc `Weakest` ct `Weakest` cf))
-  => Value cc Bool
+  :: Value cc Bool
   -> Value ct a
   -> Value cf a
   -> BasicBlock (Value (cc `Weakest` ct `Weakest` cf) a)
@@ -369,8 +366,7 @@ select = vmap3' f g where
   g c t f' = nameInstruction $ AST.Select c t f' []
 
 icmp
-  :: ( ClassificationOf (Value (cx `Weakest` cy) a) ~ IntegerClass
-     , ValueJoin (cx `Weakest` cy))
+  :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ IntegerClass)
   => IntegerPredicate.IntegerPredicate
   -> Value cx a
   -> Value cy a
@@ -380,8 +376,7 @@ icmp p = vmap2' f g where
   g x y = nameInstruction $ AST.ICmp p x y []
 
 fcmp
-  :: ( ClassificationOf (Value (cx `Weakest` cy) a) ~ FloatingPointClass
-     , ValueJoin (cx `Weakest` cy))
+  :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ FloatingPointClass)
   => FloatingPointPredicate.FloatingPointPredicate
   -> Value cx a
   -> Value cy a
@@ -392,8 +387,7 @@ fcmp p = vmap2' f g where
 
 class Cmp (classification :: Classification) where
   cmp
-    :: ( ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
-       , ValueJoin (cx `Weakest` cy))
+    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification)
     => Value cx a
     -> Value cy a
     -> BasicBlock (Value (cx `Weakest` cy) Bool)

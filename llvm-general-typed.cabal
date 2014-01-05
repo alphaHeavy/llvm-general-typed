@@ -40,6 +40,7 @@ library
     Num
     VMap
     Value
+    ValueJoin
     ValueOf
 
   build-depends:
