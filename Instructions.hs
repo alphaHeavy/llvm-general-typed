@@ -185,9 +185,13 @@ class GetElementPtr a i where
   type GetElementPtrType a i :: *
   getElementIndex :: proxy a -> i -> BasicBlock ElementIndex
 
+-- |
+-- Proving the result type of a 'getElementPtr' can be tedious or even impossible.
+-- The preferred way to do these tests is using 'tryGetElementPtr' if the result is
+-- an instance of 'Typeable'. Use this function with care.
 unsafeGetElementPtr
-  :: forall a b const i const'
-   . (GetElementPtr a i, ValueSelect const const', const' ~ GetElementPtrConstness const i)
+  :: forall a b const i
+   . (GetElementPtr a i, ValueSelect const (GetElementPtrConstness const i))
   => InBounds
   -> Value const a
   -> i
@@ -221,12 +225,17 @@ tryGetElementPtr
 tryGetElementPtr bounds value index =
   GetElementPtrTypeUnknown <$> unsafeGetElementPtr bounds value index
 
+-- |
+-- Calculate the 'Constness' of the 'Value' returned from 'getElementPtr'
 type family GetElementPtrConstness (const :: Constness) (i :: *) :: Constness where
   GetElementPtrConstness Mutable i = Mutable
   GetElementPtrConstness Constant (Proxy Nat) = Constant
   GetElementPtrConstness Constant (Proxy [Nat]) = Constant
   GetElementPtrConstness Constant (Index i) = GGetElementPtrConstness Constant (Rep i)
 
+-- |
+-- Equivalent to 'GetElementPtrConstness' for '* -> *' kinds.
+-- GHC seems to prefer this over a polykinded type family
 type family GGetElementPtrConstness (const :: Constness) (i :: * -> *) :: Constness where
   GGetElementPtrConstness a (M1 i c f) = GGetElementPtrConstness a f
   GGetElementPtrConstness a (x :*: y) = GGetElementPtrConstness a x `Weakest` GGetElementPtrConstness a y
@@ -360,7 +369,8 @@ instance Name 'Constant where
   name = return
 
 instance Name 'Mutable where
-  name val = do
+  name (ValueMutable val) = ValueMutable <$> name val
+  name (ValueOperand val) = do
     n <- freshName
     undefined
 
