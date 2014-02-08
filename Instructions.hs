@@ -16,6 +16,7 @@ import Control.Applicative
 import Control.Monad.RWS.Lazy
 import Data.Proxy
 import Data.Traversable
+import Data.Void
 import Foreign.Ptr (Ptr)
 import GHC.Generics
 import GHC.TypeLits
@@ -273,6 +274,14 @@ class GGetElementPtr a i where
 instance GGetElementPtr a f => GGetElementPtr a (M1 i c f) where
   type GGetElementPtrType a (M1 i c f) = GGetElementPtrType a f
   ggetElementIndex a (M1 f) = ggetElementIndex a f
+
+instance (a ~ Proxy "Sum types are not supported by LLVM") => GGetElementPtr a (x :+: y) where
+  type GGetElementPtrType a (x :+: y) = Void
+  ggetElementIndex _ _ = error "Sum types are not supported by LLVM"
+
+instance (a ~ Proxy "Uninhabited types are not supported by LLVM") => GGetElementPtr a V1 where
+  type GGetElementPtrType a V1 = Void
+  ggetElementIndex _ _ = error "Uninhabited types are not supported by LLVM"
 
 instance (GGetElementPtr a x, GGetElementPtr (GGetElementPtrType a x) y) => GGetElementPtr a (x :*: y) where
   type GGetElementPtrType a (x :*: y) = GGetElementPtrType (GGetElementPtrType a x) y
