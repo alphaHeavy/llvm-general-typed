@@ -3,6 +3,11 @@
 
 module Function where
 
-import CallingConv
+import Foreign.Ptr (Ptr)
 
-data Function (cconv :: CallingConv) (a :: *)
+import CallingConv
+import Value
+
+-- |
+-- 'Function's are 'Constant' 'Value's with a specific 'CallingConv'
+newtype Function (cconv :: CallingConv) (a :: *) = Function{functionValue :: Value 'Constant (Ptr a)}
