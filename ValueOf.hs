@@ -91,11 +91,6 @@ instance ValueOf (Value const a) => ValueOf (Value const (Ptr a)) where
   type ClassificationOf (Value const (Ptr a)) = PointerClass
   valueType _ = AST.PointerType (valueType (Proxy :: Proxy (Value const a))) (AST.AddrSpace 0)
 
-instance ValueOf (Value const (Struct '[])) where
-  type WordsOf (Value const (Struct '[])) = 0
-  type ClassificationOf (Value const (Struct '[])) = StructureClass
-  valueType _ = AST.FloatingPointType 64 AST.IEEE
-
 class StructureTypes a where
   structureTypes :: proxy a -> [AST.Type]
 
@@ -104,6 +99,11 @@ instance (ValueOf (Value const x), StructureTypes (Value const (Struct xs))) => 
 
 instance StructureTypes (Value const (Struct '[])) where
   structureTypes _ = []
+
+instance ValueOf (Value const (Struct '[])) where
+  type WordsOf (Value const (Struct '[])) = 0
+  type ClassificationOf (Value const (Struct '[])) = StructureClass
+  valueType _ = AST.StructureType False []
 
 instance (ValueOf (Value const x), ValueOf (Value const (Struct xs)), StructureTypes (Value const (Struct (x ': xs)))) =>
   ValueOf (Value const (Struct (x ': xs))) where
