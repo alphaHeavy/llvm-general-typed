@@ -203,6 +203,24 @@ unsafeGetElementPtr bounds value index = do
       f y = Constant.GetElementPtr inbounds y idx
       g x = nameInstruction $ AST.GetElementPtr inbounds x (fmap AST.ConstantOperand idx) []
 
+data GetElementPtrTest a
+  = GetElementPtrTypeMatch a   -- ^ The result type matches.
+  | GetElementPtrTypeMismatch  -- ^ The result type does not match.
+  | GetElementPtrTypeUnknown a -- ^ Indexing through an opaque type, this is unsafe.
+
+-- |
+-- Attempt to check the type of a 'getElementPtr' at runtime.
+-- Note: this is currently not implemented and always returns
+-- 'GetElementPtrTypeUnknown' even when the types match.
+tryGetElementPtr
+  :: (GetElementPtr a i, ValueSelect const (GetElementPtrConstness const i))
+  => InBounds
+  -> Value const a
+  -> i
+  -> BasicBlock (GetElementPtrTest (Value (GetElementPtrConstness const i) b))
+tryGetElementPtr bounds value index =
+  GetElementPtrTypeUnknown <$> unsafeGetElementPtr bounds value index
+
 type family GetElementPtrConstness (const :: Constness) (i :: *) :: Constness where
   GetElementPtrConstness Mutable i = Mutable
   GetElementPtrConstness Constant (Proxy Nat) = Constant
