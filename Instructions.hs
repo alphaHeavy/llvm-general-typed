@@ -352,13 +352,15 @@ getElementPtr
   -> BasicBlock (Value (GetElementPtrConstness const index) (Ptr (GetElementPtrType (Ptr a) index)))
 getElementPtr = unsafeGetElementPtr
 
+type Index0 index = Index (Proxy 0, index)
+
 getElementPtr0
-  :: forall a const index index'
-   . (index' ~ Index (Proxy 0, index), GetElementPtr a index, ValueSelect const (GetElementPtrConstness const index'))
+  :: forall a const index
+   . (GetElementPtr a index, ValueSelect const (GetElementPtrConstness const (Index0 index)))
   => InBounds
   -> Value const (Ptr a)
   -> index
-  -> BasicBlock (Value (GetElementPtrConstness const index') (Ptr (GetElementPtrType (Ptr a) index')))
+  -> BasicBlock (Value (GetElementPtrConstness const (Index0 index)) (Ptr (GetElementPtrType (Ptr a) (Index0 index))))
 getElementPtr0 bounds val index = getElementPtr bounds val (Index (Proxy :: Proxy 0, index))
 
 class Name (const :: Constness) where
