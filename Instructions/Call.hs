@@ -12,7 +12,7 @@
 
 module Instructions.Call
   ( call
-  , Apply
+  , Apply(ApplicationResult)
   , ArgumentList
   ) where
 
@@ -40,7 +40,7 @@ instance Apply xs f => Apply xs (M1 i c f) where
   apply xs = apply xs . unM1
 
 instance (Apply '[a] x, Apply as y) => Apply (a ': as) (x :*: y) where
-  type ApplicationResult (a ': as) (x :*: y) = ApplicationResult as y -- ^ The rightmost type is the result
+  type ApplicationResult (a ': as) (x :*: y) = ApplicationResult as y -- The rightmost type is the result
   apply _ (x :*: y) = (++) <$> apply (Proxy :: Proxy '[a]) x <*> apply (Proxy :: Proxy as) y
 
 instance x ~ a => Apply '[x] (K1 i (Value const a)) where

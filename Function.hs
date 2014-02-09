@@ -6,7 +6,6 @@
 
 module Function where
 
-import Data.Proxy
 import Foreign.Ptr (Ptr)
 import GHC.TypeLits (KnownNat)
 import qualified LLVM.General.AST.CallingConvention as CC
