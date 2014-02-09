@@ -36,6 +36,8 @@ library
     Function
     FunctionDefinition
     Instructions
+    Instructions.Call
+    Instructions.GetElementPtr
     Module
     Num
     VMap
