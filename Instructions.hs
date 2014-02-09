@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -6,6 +7,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -154,16 +156,53 @@ store address value = do
   let instr = AST.Store False address' value' Nothing 0 []
   tell [AST.Do instr]
 
-{-
-type family ResultType a :: *
+type family ArgumentList (args :: *) :: [*] where
+  ArgumentList (a -> b) = a ': ArgumentList b
+  ArgumentList a = '[a]
 
-class BundleArgs f where
-  xxxx :: f -> BasicBlock [(AST.Operand, [Attribute.ParameterAttribute])]
-  xxxx = undefined
+class Apply (args :: [*]) (f :: * -> *) where
+  type ApplicationResult args f :: *
+  apply :: proxy args -> f p -> BasicBlock [AST.Operand]
 
-call :: Function cconv ty -> args -> BasicBlock (ResultType ty)
-call = error "call"
--}
+instance Apply xs f => Apply xs (M1 i c f) where
+  type ApplicationResult xs (M1 i c f) = ApplicationResult xs f
+  apply xs = apply xs . unM1
+
+instance (Apply '[a] x, Apply as y) => Apply (a ': as) (x :*: y) where
+  type ApplicationResult (a ': as) (x :*: y) = ApplicationResult as y -- ^ The rightmost type is the result
+  apply _ (x :*: y) = (++) <$> apply (Proxy :: Proxy '[a]) x <*> apply (Proxy :: Proxy as) y
+
+instance x ~ a => Apply '[x] (K1 i (Value const a)) where
+  type ApplicationResult '[x] (K1 i (Value const a)) = a
+  apply _ = fmap (:[]) . asOp . unK1
+
+instance f ~ Proxy "Extra arguments applied to function" => Apply '[] (K1 i f) where
+  type ApplicationResult '[] (K1 i f) = Void
+  apply _ _ = error "Extra arguments applied to function"
+
+instance f ~ Proxy "Insufficient arguments applied to function" => Apply (a ': b ': c) (K1 i f) where
+  type ApplicationResult (a ': b ': c) (K1 i f) = Void
+  apply _ _ = error "Insufficient arguments applied to function"
+
+call
+  :: forall args cconv ty
+   . (Generic args, Apply (ArgumentList ty) (Rep args))
+  => Function cconv ty
+  -> args
+  -> BasicBlock (Value 'Mutable (ApplicationResult (ArgumentList ty) (Rep args)))
+call (Function f cconv) args = do
+  f' <- Right <$> asOp f
+  args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
+  let instr = AST.Call
+        { isTailCall = False
+        , callingConvention = cconv
+        , returnAttributes = []
+        , function = f'
+        , arguments = (,[]) <$> args'
+        , functionAttributes = []
+        , metadata = []
+        }
+  ValueOperand . return <$> nameInstruction instr
 
 data InBounds
   = InBounds
