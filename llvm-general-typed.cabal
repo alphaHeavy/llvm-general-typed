@@ -21,6 +21,9 @@ source-repository head
   location: git://github.com/alphaHeavy/llvm-general-typed.git
 
 library
+  hs-source-dirs:
+   src
+
   default-language:
     Haskell2010
 
@@ -28,23 +31,23 @@ library
     -Wall
 
   exposed-modules:
-    AnyValue
-    BasicBlock
-    CallingConv
-    DefineBasicBlock
-    FreshName
-    Function
-    FunctionDefinition
-    Instructions
-    Instructions.Call
-    Instructions.GetElementPtr
-    Module
-    Num
-    VMap
-    Value
-    ValueJoin
-    ValueOf
-    ValueSelect
+    LLVM.General.Typed.AnyValue
+    LLVM.General.Typed.BasicBlock
+    LLVM.General.Typed.CallingConv
+    LLVM.General.Typed.DefineBasicBlock
+    LLVM.General.Typed.FreshName
+    LLVM.General.Typed.Function
+    LLVM.General.Typed.FunctionDefinition
+    LLVM.General.Typed.Instructions
+    LLVM.General.Typed.Instructions.Call
+    LLVM.General.Typed.Instructions.GetElementPtr
+    LLVM.General.Typed.Module
+    LLVM.General.Typed.Num
+    LLVM.General.Typed.VMap
+    LLVM.General.Typed.Value
+    LLVM.General.Typed.ValueJoin
+    LLVM.General.Typed.ValueOf
+    LLVM.General.Typed.ValueSelect
 
   build-depends:
     base >=4.7 && <4.8,

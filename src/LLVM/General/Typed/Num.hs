@@ -8,7 +8,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Num where
+module LLVM.General.Typed.Num where
 
 import Data.Int
 import Data.Proxy
@@ -21,12 +21,12 @@ import qualified LLVM.General.AST.Float as Float
 import qualified LLVM.General.AST.FloatingPointPredicate as FloatingPointPredicate
 import qualified LLVM.General.AST.IntegerPredicate as IntegerPredicate
 
-import BasicBlock
-import FreshName
-import Instructions
-import Value
-import ValueOf
-import VMap
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.FreshName
+import LLVM.General.Typed.Instructions
+import LLVM.General.Typed.Value
+import LLVM.General.Typed.ValueOf
+import LLVM.General.Typed.VMap
 
 signumSigned
   :: forall const a .

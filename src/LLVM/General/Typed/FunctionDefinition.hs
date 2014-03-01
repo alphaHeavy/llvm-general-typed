@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module FunctionDefinition where
+module LLVM.General.Typed.FunctionDefinition where
 
 import Control.Applicative
 import Control.Monad.Fix

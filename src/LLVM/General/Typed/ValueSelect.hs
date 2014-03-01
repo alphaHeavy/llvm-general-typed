@@ -3,13 +3,13 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module ValueSelect where
+module LLVM.General.Typed.ValueSelect where
 
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
 
-import BasicBlock
-import Value
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.Value
 
 class ValueSelect (const :: Constness) (const' :: Constness) where
   vselect

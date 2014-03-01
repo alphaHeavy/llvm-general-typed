@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Module where
+module LLVM.General.Typed.Module where
 
 import Control.Applicative
 import Control.Monad.Fix
@@ -9,8 +9,8 @@ import Control.Monad.State.Lazy
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Global as Global
 
-import Function
-import FunctionDefinition
+import LLVM.General.Typed.Function
+import LLVM.General.Typed.FunctionDefinition
 
 newtype Module a = Module{runModule :: State ModuleState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState ModuleState)

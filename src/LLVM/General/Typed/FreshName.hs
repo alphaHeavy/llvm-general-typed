@@ -1,12 +1,12 @@
 {-# LANGUAGE KindSignatures #-}
 
-module FreshName where
+module LLVM.General.Typed.FreshName where
 
 import Control.Monad.RWS.Lazy
 import qualified LLVM.General.AST as AST
 
-import BasicBlock
-import FunctionDefinition
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.FunctionDefinition
 
 class FreshName (f :: * -> *) where
   freshName :: f AST.Name

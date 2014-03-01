@@ -4,14 +4,14 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Function where
+module LLVM.General.Typed.Function where
 
 import Foreign.Ptr (Ptr)
 import GHC.TypeLits (KnownNat)
 import qualified LLVM.General.AST.CallingConvention as CC
 
-import CallingConv
-import Value
+import LLVM.General.Typed.CallingConv
+import LLVM.General.Typed.Value
 
 -- |
 -- 'Function's are 'Constant' 'Value's with a specific 'CallingConv'

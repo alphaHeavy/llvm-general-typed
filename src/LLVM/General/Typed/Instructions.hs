@@ -7,7 +7,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Instructions
+module LLVM.General.Typed.Instructions
   ( ret
   , ret_
   , condBr
@@ -28,8 +28,8 @@ module Instructions
   , icmp
   , fcmp
   , cmp
-  , module Instructions.Call
-  , module Instructions.GetElementPtr
+  , module LLVM.General.Typed.Instructions.Call
+  , module LLVM.General.Typed.Instructions.GetElementPtr
   ) where
 
 import Control.Applicative
@@ -43,15 +43,15 @@ import qualified LLVM.General.AST.Constant as Constant
 import qualified LLVM.General.AST.FloatingPointPredicate as FloatingPointPredicate
 import qualified LLVM.General.AST.IntegerPredicate as IntegerPredicate
 
-import AnyValue
-import BasicBlock
-import FreshName
-import Instructions.Call
-import Instructions.GetElementPtr
-import Value
-import ValueJoin
-import ValueOf
-import VMap
+import LLVM.General.Typed.AnyValue
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.FreshName
+import LLVM.General.Typed.Instructions.Call
+import LLVM.General.Typed.Instructions.GetElementPtr
+import LLVM.General.Typed.Value
+import LLVM.General.Typed.ValueJoin
+import LLVM.General.Typed.ValueOf
+import LLVM.General.Typed.VMap
 
 ret
   :: ValueOf (Value const a)

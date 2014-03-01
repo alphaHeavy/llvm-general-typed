@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module ValueOf where
+module LLVM.General.Typed.ValueOf where
 
 import Data.Int
 import Data.Proxy
@@ -16,7 +16,7 @@ import GHC.TypeLits
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.AddrSpace as AST
 
-import Value
+import LLVM.General.Typed.Value
 
 data Classification
   = IntegerClass

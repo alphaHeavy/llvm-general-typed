@@ -2,15 +2,15 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecursiveDo #-}
 
-module DefineBasicBlock where
+module LLVM.General.Typed.DefineBasicBlock where
 
 import Control.Monad.RWS.Lazy
 import Data.List as List
 import qualified LLVM.General.AST as AST
 
-import BasicBlock
-import FreshName
-import FunctionDefinition
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.FreshName
+import LLVM.General.Typed.FunctionDefinition
 
 basicBlock :: (DefineBasicBlock f, FreshName f, Monad f) => BasicBlock (Terminator ()) -> f Label
 basicBlock bb = do

@@ -10,11 +10,12 @@ import Data.Int
 import qualified LLVM.General.AST as AST
 import LLVM.General.PrettyPrint (showPretty)
 
-import DefineBasicBlock
-import Module
-import Instructions
-import Num ()
-import Value
+import LLVM.General.Typed.DefineBasicBlock
+import LLVM.General.Typed.Module
+import LLVM.General.Typed.Instructions
+import LLVM.General.Typed.Instructions
+import LLVM.General.Typed.Num ()
+import LLVM.General.Typed.Value
 
 foo :: Module ()
 foo = do

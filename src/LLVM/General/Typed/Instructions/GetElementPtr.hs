@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Instructions.GetElementPtr
+module LLVM.General.Typed.Instructions.GetElementPtr
   ( InBounds(..)
   , getElementPtr
   , getElementPtr0
@@ -31,11 +31,11 @@ import GHC.TypeLits
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
 
-import BasicBlock
-import FreshName
-import Value
-import ValueJoin
-import ValueSelect
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.FreshName
+import LLVM.General.Typed.Value
+import LLVM.General.Typed.ValueJoin
+import LLVM.General.Typed.ValueSelect
 
 data InBounds
   = InBounds

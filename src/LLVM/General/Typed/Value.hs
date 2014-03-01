@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Value where
+module LLVM.General.Typed.Value where
 
 import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
@@ -14,8 +14,8 @@ import GHC.TypeLits (Nat)
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
 
-import BasicBlock
-import FunctionDefinition
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.FunctionDefinition
 
 data Constness = Constant | Mutable
 

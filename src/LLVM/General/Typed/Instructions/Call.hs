@@ -10,7 +10,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Instructions.Call
+module LLVM.General.Typed.Instructions.Call
   ( call
   , Apply(ApplicationResult)
   , ArgumentList
@@ -22,10 +22,10 @@ import Data.Void
 import GHC.Generics
 import qualified LLVM.General.AST as AST
 
-import BasicBlock
-import FreshName
-import Function
-import Value
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.FreshName
+import LLVM.General.Typed.Function
+import LLVM.General.Typed.Value
 
 type family ArgumentList (args :: *) :: [*] where
   ArgumentList (a -> b) = a ': ArgumentList b

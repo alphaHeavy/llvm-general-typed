@@ -15,10 +15,10 @@ import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
-import DefineBasicBlock
-import Instructions
-import Module
-import Value
+import LLVM.General.Typed.DefineBasicBlock
+import LLVM.General.Typed.Instructions
+import LLVM.General.Typed.Module
+import LLVM.General.Typed.Value
 
 getElementPtrTypeEquality :: ()
 getElementPtrTypeEquality = () where

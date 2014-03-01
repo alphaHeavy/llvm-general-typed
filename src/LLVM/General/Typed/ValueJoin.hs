@@ -1,9 +1,9 @@
 {-# LANGUAGE GADTs #-}
 
-module ValueJoin where
+module LLVM.General.Typed.ValueJoin where
 
-import BasicBlock
-import Value
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.Value
 
 vjoin :: Value const a -> BasicBlock (Value const a)
 vjoin (ValueOperand a) = a >>= return . ValueOperand . return

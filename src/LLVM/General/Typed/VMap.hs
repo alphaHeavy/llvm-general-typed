@@ -4,7 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 
-module VMap where
+module LLVM.General.Typed.VMap where
 
 import Control.Applicative
 import Control.Monad
@@ -12,9 +12,9 @@ import Control.Monad
 import LLVM.General.AST (Operand)
 import LLVM.General.AST.Constant (Constant)
 
-import BasicBlock
-import Value
-import ValueJoin
+import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.Value
+import LLVM.General.Typed.ValueJoin
 
 vmap1
   :: (Constant -> Constant)

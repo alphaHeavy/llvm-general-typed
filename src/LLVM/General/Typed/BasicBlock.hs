@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module BasicBlock where
+module LLVM.General.Typed.BasicBlock where
 
 import Control.Applicative
 import Control.Monad.Fix
@@ -9,7 +9,7 @@ import Control.Monad.RWS.Lazy
 import Data.Maybe (fromJust)
 import qualified LLVM.General.AST as AST
 
-import FunctionDefinition
+import LLVM.General.Typed.FunctionDefinition
 
 newtype BasicBlock a = BasicBlock{runBasicBlock :: RWST () [AST.Named AST.Instruction] BasicBlockState FunctionDefinition a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState BasicBlockState, MonadWriter [AST.Named AST.Instruction])

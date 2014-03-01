@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module CallingConv where
+module LLVM.General.Typed.CallingConv where
 
 import Data.Proxy
 import GHC.TypeLits
