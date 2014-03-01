@@ -31,6 +31,7 @@ library
     -Wall
 
   exposed-modules:
+    LLVM.General.Typed
     LLVM.General.Typed.AnyValue
     LLVM.General.Typed.BasicBlock
     LLVM.General.Typed.BlockAddress

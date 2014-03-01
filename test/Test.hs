@@ -17,6 +17,7 @@ import Test.Tasty.HUnit
 
 import LLVM.General.Typed.DefineBasicBlock
 import LLVM.General.Typed.Instructions
+import LLVM.General.Typed.Instructions.GetElementPtr
 import LLVM.General.Typed.Module
 import LLVM.General.Typed.Value
 

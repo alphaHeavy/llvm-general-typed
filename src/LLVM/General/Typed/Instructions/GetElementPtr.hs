@@ -76,7 +76,7 @@ unsafeGetElementPtr bounds value index = do
   let inbounds = case bounds of InBounds -> True; OutOfBounds -> False
   case elementIdx of
     MutableElementIndex idx -> vjoin (vselect f g value) where
-      f _ = error "hum, probably a bug"
+      f _ = error "This should be unreachable, GEP on a mutable value is mutable"
       g x = nameInstruction $ AST.GetElementPtr inbounds x idx []
     ConstantElementIndex idx -> vjoin (vselect f g value) where
       f y = Constant.GetElementPtr inbounds y idx

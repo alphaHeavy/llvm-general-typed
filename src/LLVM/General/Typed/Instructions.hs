@@ -8,7 +8,8 @@
 {-# LANGUAGE TypeOperators #-}
 
 module LLVM.General.Typed.Instructions
-  ( ret
+  ( -- * Terminator Instructions
+    ret
   , ret_
   , condBr
   , br
@@ -18,19 +19,62 @@ module LLVM.General.Typed.Instructions
   , invoke
   , unreachable
   , resume
-  , undef
+  -- * Binary Operations
+  , add
+  -- , sub
+  -- , mul
+  -- , div
+  -- , rem
+  -- * Bitwise Binary Operation
+  -- , shl
+  -- , lshr
+  -- , ashr
+  -- , and
+  -- , or
+  -- , xor
+  -- * Vector Operations
+  -- , extractelement
+  -- , insertelement
+  -- , shufflevector
+  -- * Aggregate Operations
+  -- , extractvalue
+  -- , insertvalue
+  -- * Memory Access and Addressing Operations
   , alloca
   , load
   , store
+  -- , fence
+  -- , cmpxchg
+  -- , atomicrmw
+  -- ** GetElementPtr
+  , InBounds(..)
+  , getElementPtr
+  , getElementPtr0
+  -- * Conversion Operations
   , trunc
+  -- , zext
+  -- , sext
+  -- , fptoui
+  -- , fptosi
+  -- , uitofp
+  -- , sitofp
+  -- , ptrtoint
+  -- , inttoptr
   , bitcast
-  , add
-  , select
+  -- , addrspacecast
+  -- * Other Operations
+  , undef
+  -- ** Comparisons
   , icmp
   , fcmp
-  , cmp
-  , module LLVM.General.Typed.Instructions.Call
-  , module LLVM.General.Typed.Instructions.GetElementPtr
+  , Cmp(..)
+  -- ** asdf
+  , Phi(..)
+  , select
+  -- ** Function invocation
+  , call
+  -- , va_arg
+  -- , landingpad
   ) where
 
 import Control.Applicative
