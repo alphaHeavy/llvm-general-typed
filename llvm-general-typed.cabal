@@ -33,6 +33,7 @@ library
   exposed-modules:
     LLVM.General.Typed.AnyValue
     LLVM.General.Typed.BasicBlock
+    LLVM.General.Typed.BlockAddress
     LLVM.General.Typed.CallingConv
     LLVM.General.Typed.DefineBasicBlock
     LLVM.General.Typed.FreshName

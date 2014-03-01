@@ -13,6 +13,7 @@ module LLVM.General.Typed.Instructions
   , condBr
   , br
   , switch
+  , blockAddress
   , indirectBr
   , invoke
   , unreachable
@@ -45,7 +46,9 @@ import qualified LLVM.General.AST.IntegerPredicate as IntegerPredicate
 
 import LLVM.General.Typed.AnyValue
 import LLVM.General.Typed.BasicBlock
+import LLVM.General.Typed.BlockAddress
 import LLVM.General.Typed.FreshName
+import LLVM.General.Typed.Function
 import LLVM.General.Typed.Instructions.Call
 import LLVM.General.Typed.Instructions.GetElementPtr
 import LLVM.General.Typed.Instructions.Invoke
@@ -98,9 +101,13 @@ switch value (Label defaultDest) dests = do
   setTerminator $ AST.Switch valueOp defaultDest dests' []
   return $ Terminator ()
 
+blockAddress :: Function cconv a -> Label -> Ptr BlockAddress
+blockAddress = undefined
+
+indirectBr :: Ptr BlockAddress -> [Label] -> BasicBlock (Terminator ())
 indirectBr = undefined
 
-
+resume :: Value const a -> BasicBlock (Terminator ())
 resume = undefined
 
 unreachable
