@@ -48,6 +48,7 @@ import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.FreshName
 import LLVM.General.Typed.Instructions.Call
 import LLVM.General.Typed.Instructions.GetElementPtr
+import LLVM.General.Typed.Instructions.Invoke
 import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.ValueOf
@@ -99,7 +100,6 @@ switch value (Label defaultDest) dests = do
 
 indirectBr = undefined
 
-invoke = undefined
 
 resume = undefined
 

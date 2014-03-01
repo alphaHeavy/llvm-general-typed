@@ -12,7 +12,7 @@
 
 module LLVM.General.Typed.Instructions.Call
   ( call
-  , Apply(ApplicationResult)
+  , Apply(..)
   , ArgumentList
   ) where
 
