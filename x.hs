@@ -13,7 +13,6 @@ import LLVM.General.PrettyPrint (showPretty)
 import LLVM.General.Typed.DefineBasicBlock
 import LLVM.General.Typed.Module
 import LLVM.General.Typed.Instructions
-import LLVM.General.Typed.Instructions
 import LLVM.General.Typed.Num ()
 import LLVM.General.Typed.Value
 
@@ -24,18 +23,18 @@ foo = do
 
   namedModule "foo" $ do
     void . namedFunction "bar" $ mdo
-      entryBlock <- basicBlock $ do
+      entryBlock <- basicBlock_ $ do
         br secondBlock
 
-      secondBlock <- namedBasicBlock (AST.Name "second") $ do
+      secondBlock <- namedBasicBlock_ (AST.Name "second") $ do
         someLocalPtr <- alloca
         store someLocalPtr (99 :: Value 'Constant Int8)
         someLocal <- load someLocalPtr
         x <- val `add` someLocal
         join $ condBr
           <$> cmp someLocal (mutable 99)
-          <*> basicBlock (ret $ abs x * someLocal + mutable (val - signum 8))
-          <*> basicBlock (br entryBlock)
+          <*> basicBlock_ (ret $ abs x * someLocal + mutable (val - signum 8))
+          <*> basicBlock_ (br entryBlock)
 
       return ()
 

@@ -42,5 +42,3 @@ instance Phi AnyValue where
 
     let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
     ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
-
-
