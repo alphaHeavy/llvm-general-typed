@@ -27,6 +27,7 @@ module Instructions
   , select
   , icmp
   , fcmp
+  , cmp
   , module Instructions.Call
   , module Instructions.GetElementPtr
   ) where
