@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -80,7 +79,6 @@ module LLVM.General.Typed.Instructions
 import Control.Applicative
 import Control.Monad.RWS.Lazy
 import Data.Proxy
-import Data.Traversable
 import Foreign.Ptr (Ptr)
 import GHC.TypeLits
 import qualified LLVM.General.AST as AST
@@ -88,7 +86,6 @@ import qualified LLVM.General.AST.Constant as Constant
 import qualified LLVM.General.AST.FloatingPointPredicate as FloatingPointPredicate
 import qualified LLVM.General.AST.IntegerPredicate as IntegerPredicate
 
-import LLVM.General.Typed.AnyValue
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.BlockAddress
 import LLVM.General.Typed.FreshName
@@ -96,6 +93,7 @@ import LLVM.General.Typed.Function
 import LLVM.General.Typed.Instructions.Call
 import LLVM.General.Typed.Instructions.GetElementPtr
 import LLVM.General.Typed.Instructions.Invoke
+import LLVM.General.Typed.Instructions.Phi
 import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.ValueOf
@@ -167,31 +165,6 @@ undef
 undef = do
   let val = Constant.Undef $ valueType (Proxy :: Proxy (Value 'Constant a))
   return $ ValueConstant val
-
-class Phi (f :: * -> *) where
-  phi :: ValueOf (Value 'Mutable a) => [(f a, Label)] -> BasicBlock (Value 'Mutable a)
-
-instance Phi (Value const) where
-  phi :: forall a . ValueOf (Value 'Mutable a) => [(Value const a, Label)] -> BasicBlock (Value 'Mutable a)
-  phi incomingValues = do
-    -- @TODO: make sure we have evaluated all of the values in the list...
-    incomingValues' <- for incomingValues $ \ (val, Label origin) -> do
-      valOp <- asOp val
-      return (valOp, origin)
-
-    let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
-    ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
-
-instance Phi AnyValue where
-  phi :: forall a . ValueOf (Value 'Mutable a) => [(AnyValue a, Label)] -> BasicBlock (Value 'Mutable a)
-  phi incomingValues = do
-    -- @TODO: make sure we have evaluated all of the values in the list...
-    incomingValues' <- for incomingValues $ \ (AnyValue val, Label origin) -> do
-      valOp <- asOp val
-      return (valOp, origin)
-
-    let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
-    ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
 
 alloca
   :: forall a .
