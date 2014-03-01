@@ -62,13 +62,13 @@ call
   -> args
   -> BasicBlock (Value 'Mutable (ApplicationResult (ArgumentList ty) (Rep args)))
 call (Function f cconv) args = do
-  f' <- Right <$> asOp f
+  f' <- asOp f
   args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
   let instr = AST.Call
         { isTailCall = False
         , callingConvention = cconv
         , returnAttributes = []
-        , function = f'
+        , function = Right f'
         , arguments = (,[]) <$> args'
         , functionAttributes = []
         , metadata = []
