@@ -38,7 +38,7 @@ getElementPtrTypeEquality = () where
   _ = Refl :: GetElementPtrType (Array 100 Int64) (Proxy '[100]) :~: Int64
   _ = Refl :: GetElementPtrType (Array 100 Int64) (Proxy '[112]) :~: Int64
 
-  _ = Refl :: GGetElementPtrType (Array 100 (Array 100 Int64)) (Rep (Value 'Mutable Int32, Value 'Mutable Int32)) :~: Int64
+  _ = Refl :: GetElementPtrType (Array 100 (Array 100 Int64)) (Index (Value 'Mutable Int32, Value 'Mutable Int32)) :~: Int64
 
 main :: IO ()
 main = defaultMain tests

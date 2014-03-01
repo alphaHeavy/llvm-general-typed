@@ -18,7 +18,10 @@ module LLVM.General.Typed.Instructions.GetElementPtr
   , unsafeGetElementPtr
   , ElementIndex
   , GetElementIndex
+  , GetElementPtrType
+  , Index(..)
   , InvalidGetElementPtrIndexBoundsPtr
+  , InvalidGetElementPtrIndexBoundsStruct
   ) where
 
 import Control.Applicative
