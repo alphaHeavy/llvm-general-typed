@@ -54,6 +54,7 @@ library
     LLVM.General.Typed.ValueJoin
     LLVM.General.Typed.ValueOf
     LLVM.General.Typed.ValueSelect
+    LLVM.General.Typed.ValueWrap
 
   build-depends:
     base >=4.7 && <4.8,

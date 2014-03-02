@@ -15,5 +15,6 @@ newtype FunctionDefinition a = FunctionDefinition{runFunctionDefinition :: State
 data FunctionDefinitionState = FunctionDefinitionState
   { functionDefinitionBasicBlocks :: [AST.BasicBlock]
   , functionDefinitionFreshId     :: {-# UNPACK #-} !Word
+  , functionDefinitionParameters  :: [AST.Parameter]
   }
 
