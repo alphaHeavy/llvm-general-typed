@@ -132,8 +132,7 @@ br (Label dest) = do
   return $ Terminator ()
 
 switch
-  :: ( ClassificationOf (Value const a)     ~ IntegerClass,
-       ClassificationOf (Value 'Constant a) ~ IntegerClass)
+  :: (ClassificationOf (Value 'Constant a) ~ IntegerClass)
   => Value const a
   -> Label -- default
   -> [(Value 'Constant a, Label)]
