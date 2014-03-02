@@ -143,10 +143,10 @@ switch value (Label defaultDest) dests = do
   setTerminator $ AST.Switch valueOp defaultDest dests' []
   return $ Terminator ()
 
-blockAddress :: Function cconv a -> Label -> Ptr BlockAddress
+blockAddress :: Function cconv a -> Label -> BasicBlock (Value 'Constant BlockAddress)
 blockAddress = undefined
 
-indirectBr :: Ptr BlockAddress -> [Label] -> BasicBlock (Terminator ())
+indirectBr :: Value 'Constant BlockAddress -> [Label] -> BasicBlock (Terminator ())
 indirectBr = undefined
 
 resume :: Value const a -> BasicBlock (Terminator ())
