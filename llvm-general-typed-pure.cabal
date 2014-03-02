@@ -70,9 +70,8 @@ test-suite test
     tasty-quickcheck,
     HUnit >= 1.2.4.2,
     QuickCheck >= 2.5.1.1,
-    llvm-general,
     llvm-general-pure,
-    llvm-general-typed,
+    llvm-general-typed-pure,
     void,
     transformers,
     mtl
@@ -93,7 +92,7 @@ executable x
   build-depends:
     base >=4.7 && <4.8,
     llvm-general-pure,
-    llvm-general-typed,
+    llvm-general-typed-pure,
     void,
     transformers,
     mtl
