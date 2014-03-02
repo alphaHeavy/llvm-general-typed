@@ -60,7 +60,7 @@ evalConstantBasicBlock
   -> Value 'Constant a
 evalConstantBasicBlock (BasicBlock v) =
   let m = evalRWST v () (BasicBlockState (error "name") Nothing)
-  in fst $ evalState (runFunctionDefinition m) (FunctionDefinitionState [] 0)
+  in fst $ evalState (runFunctionDefinition m) (FunctionDefinitionState [] 0 [])
 
 asOp
   :: Value const a

@@ -1,16 +1,33 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
-module LLVM.General.Typed.Module where
+module LLVM.General.Typed.Module
+  ( Module
+  , evalModule
+  , namedModule
+  , FunctionType(..)
+  , namedFunction
+  ) where
 
 import Control.Applicative
 import Control.Monad.Fix
 import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
+import Data.Proxy
+import GHC.TypeLits
 import qualified LLVM.General.AST as AST
+import qualified LLVM.General.AST.Constant as Constant
 import qualified LLVM.General.AST.Global as Global
 
+import LLVM.General.Typed.CallingConv
 import LLVM.General.Typed.Function
 import LLVM.General.Typed.FunctionDefinition
+import LLVM.General.Typed.Value
 
 newtype Module a = Module{runModule :: State ModuleState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState ModuleState)
@@ -38,15 +55,42 @@ namedModule n body = do
   put $!  st{moduleName = n, moduleDefinitions = fmap AST.GlobalDefinition defs}
   return a
 
-namedFunction :: String -> FunctionDefinition a -> Globals (Function cconv ty, a)
+type family ArgumentList (args :: *) :: [*] where
+  ArgumentList (a -> b) = a ': ArgumentList b
+  ArgumentList a = '[a]
+
+class FunctionType a where
+  functionType :: proxy a -> [AST.Type]
+
+splitFunctionTypes :: [AST.Type] -> [AST.Type] -> Maybe ([AST.Type], AST.Type)
+splitFunctionTypes [] _ = Nothing
+splitFunctionTypes [x] ys = Just (reverse ys, x)
+splitFunctionTypes (x:xs) ys = splitFunctionTypes xs (x:ys)
+
+namedFunction
+  :: forall a cconv ty
+   . (FunctionType ty, KnownNat cconv)
+  => String
+  -> FunctionDefinition a
+  -> Globals (Function ('CallingConv cconv) ty, a)
 namedFunction n defn = do
-  let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0}
-      ~(a, defSt') = runState (runFunctionDefinition defn) defnSt
-      x = AST.functionDefaults
-           { Global.basicBlocks = functionDefinitionBasicBlocks defSt'
-           , Global.name = AST.Name n
-           , Global.returnType = AST.IntegerType 8
-           }
-  st <- get
-  put $! x:st
-  return (error "foo", a)
+  case splitFunctionTypes (functionType (Proxy :: Proxy ty)) [] of
+    Nothing -> fail "Empty function types?"
+    Just (argumentTypes, returnType) -> do
+      let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0, functionDefinitionParameters = []}
+          ~(a, defSt') = runState (runFunctionDefinition defn) defnSt
+          name = AST.Name n
+          params = functionDefinitionParameters defSt'
+          x = AST.functionDefaults
+               { Global.basicBlocks = functionDefinitionBasicBlocks defSt'
+               , Global.name = AST.Name n
+               , Global.parameters = (params, False)
+               , Global.returnType = returnType
+               }
+
+      when (argumentTypes /= [ty | Global.Parameter ty _ _ <- params]) $
+        fail "Parameter type mismatch"
+
+      st <- get
+      put $! x:st
+      return (Function (ValueConstant (Constant.GlobalReference name)) (reifyCallingConv (Proxy :: Proxy ('CallingConv cconv))), a)
