@@ -1,12 +1,16 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
-module LLVM.General.Typed.Instructions.Trunc where
+module LLVM.General.Typed.Instructions.Trunc
+  ( Trunc
+  , trunc
+  ) where
 
 import Data.Proxy
 import GHC.TypeLits
@@ -19,7 +23,7 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
-class VTrunc (classification :: Classification) where
+class ClassTrunc (classification :: Classification) where
   vtrunc
     :: ( ClassificationOf (Value const a) ~ classification
        , ClassificationOf (Value const b) ~ classification
@@ -28,7 +32,7 @@ class VTrunc (classification :: Classification) where
     => Value const a
     -> BasicBlock (Value const b)
 
-instance VTrunc IntegerClass where
+instance ClassTrunc IntegerClass where
   vtrunc
     :: forall const a b
      . ( ClassificationOf (Value const a) ~ IntegerClass
@@ -42,7 +46,7 @@ instance VTrunc IntegerClass where
     f v = Constant.Trunc v vt
     g v = nameInstruction $ AST.Trunc v vt []
 
-instance VTrunc FloatingPointClass where
+instance ClassTrunc FloatingPointClass where
   vtrunc
     :: forall const a b
      . ( ClassificationOf (Value const a) ~ FloatingPointClass
@@ -56,12 +60,20 @@ instance VTrunc FloatingPointClass where
     f v = Constant.Trunc v vt
     g v = nameInstruction $ AST.FPTrunc v vt []
 
-trunc
-  :: forall a b const .
+class Trunc a b where
+  itrunc :: a -> BasicBlock b
+
+instance
      ( ClassificationOf (Value const a) ~ ClassificationOf (Value const b)
-     , VTrunc (ClassificationOf (Value const b))
+     , ClassTrunc (ClassificationOf (Value const b))
      , ValueOf (Value const b)
+     , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
+  => Trunc (Value const a) (Value const b) where
+  itrunc = vtrunc
+
+trunc
+  :: ( Trunc (Value const a) (Value const b)
      , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
   => Value const a
   -> BasicBlock (Value const b)
-trunc = vtrunc
+trunc = itrunc
