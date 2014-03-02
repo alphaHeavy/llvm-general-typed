@@ -94,6 +94,7 @@ import LLVM.General.Typed.Instructions.Call
 import LLVM.General.Typed.Instructions.GetElementPtr
 import LLVM.General.Typed.Instructions.Invoke
 import LLVM.General.Typed.Instructions.Phi
+import LLVM.General.Typed.Instructions.Trunc
 import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.ValueOf
@@ -214,18 +215,6 @@ name = undefined
 name_ :: Value const a -> BasicBlock (Value const a)
 name_ = undefined
 -}
-
-trunc
-  :: forall a b const .
-     ( ClassificationOf (Value const a) ~ IntegerClass, ClassificationOf (Value const b) ~ IntegerClass
-     , ValueOf (Value const b)
-     , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
-  => Value const a
-  -> BasicBlock (Value const b)
-trunc = vmap1' f g where
-  vt = valueType (Proxy :: Proxy (Value const b))
-  f v = Constant.Trunc v vt
-  g v = nameInstruction $ AST.Trunc v vt []
 
 bitcast
   :: forall a b const .
