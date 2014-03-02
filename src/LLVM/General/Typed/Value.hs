@@ -24,9 +24,9 @@ type family Weakest (x :: k) (y :: k) :: k where
   Weakest x         y         = 'Mutable
 
 data Value (const :: Constness) (a :: *) where
-  ValueMutable     :: Value 'Constant a      -> Value 'Mutable a
-  ValueOperand     :: BasicBlock AST.Operand -> Value 'Mutable a
-  ValueConstant    :: Constant.Constant      -> Value 'Constant a
+  ValueMutable  :: Value 'Constant a      -> Value 'Mutable a
+  ValueOperand  :: BasicBlock AST.Operand -> Value 'Mutable a
+  ValueConstant :: Constant.Constant      -> Value 'Constant a
 
 data Struct (xs :: [*]) = Struct
 data Array (n :: Nat) (a :: *) = Array
