@@ -17,7 +17,7 @@ import qualified LLVM.General.AST as AST
 
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.Function
-import LLVM.General.Typed.Instructions.Call
+import LLVM.General.Typed.Instructions.Apply
 import LLVM.General.Typed.Value
 
 invoke
