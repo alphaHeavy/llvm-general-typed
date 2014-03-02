@@ -28,8 +28,8 @@ invoke
   -> Label
   -> Label
   -> BasicBlock (Terminator (Value 'Mutable (ApplicationResult (ArgumentList ty) (Rep args))))
-invoke (Function f cconv) args (Label returnDest) (Label exceptionDest) = do
-  f' <- asOp f
+invoke (Function (ValueConstant f) cconv) args (Label returnDest) (Label exceptionDest) = do
+  let f' = AST.ConstantOperand f
   args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
   let instr = AST.Invoke
         { callingConvention' = cconv

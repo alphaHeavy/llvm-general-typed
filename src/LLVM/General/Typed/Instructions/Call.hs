@@ -61,8 +61,8 @@ call
   => Function cconv ty
   -> args
   -> BasicBlock (Value 'Mutable (ApplicationResult (ArgumentList ty) (Rep args)))
-call (Function f cconv) args = do
-  f' <- asOp f
+call (Function (ValueConstant f) cconv) args = do
+  let f' = AST.ConstantOperand f
   args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
   let instr = AST.Call
         { isTailCall = False
