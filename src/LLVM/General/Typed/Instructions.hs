@@ -180,20 +180,22 @@ alloca = do
   ValueOperand . return <$> nameInstruction inst
 
 load
-  :: Value const (Ptr a)
+  :: Bool
+  -> Value const (Ptr a)
   -> BasicBlock (Value 'Mutable a)
-load x = do
-  x' <- asOp x
-  ValueOperand . return <$> nameInstruction (AST.Load False x' Nothing 0 [])
+load volatile value = do
+  value' <- asOp value
+  ValueOperand . return <$> nameInstruction (AST.Load volatile value' Nothing 0 [])
 
 store
-  :: Value cx (Ptr a)
+  :: Bool
+  -> Value cx (Ptr a)
   -> Value cy a
   -> BasicBlock ()
-store address value = do
+store volatile address value = do
   address' <- asOp address
   value' <- asOp value
-  let instr = AST.Store False address' value' Nothing 0 []
+  let instr = AST.Store volatile address' value' Nothing 0 []
   tell [AST.Do instr]
 
 class Name (const :: Constness) where
