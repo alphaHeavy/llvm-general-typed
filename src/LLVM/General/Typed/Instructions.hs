@@ -51,6 +51,7 @@ module LLVM.General.Typed.Instructions
   , getElementPtr0
   -- * Conversion Operations
   , trunc
+  , ext
   -- , zext
   -- , sext
   , inttofp
@@ -90,6 +91,7 @@ import LLVM.General.Typed.FreshName
 import LLVM.General.Typed.Function
 import LLVM.General.Typed.Instructions.Add
 import LLVM.General.Typed.Instructions.Call
+import LLVM.General.Typed.Instructions.Extend
 import LLVM.General.Typed.Instructions.FPToInt
 import LLVM.General.Typed.Instructions.GetElementPtr
 import LLVM.General.Typed.Instructions.IntToFP
