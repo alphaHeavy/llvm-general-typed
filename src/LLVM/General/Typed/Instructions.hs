@@ -20,7 +20,7 @@ module LLVM.General.Typed.Instructions
   , resume
   -- * Binary Operations
   , add
-  -- , sub
+  , sub
   -- , mul
   -- , div
   -- , rem
@@ -95,6 +95,7 @@ import LLVM.General.Typed.Instructions.Call
 import LLVM.General.Typed.Instructions.GetElementPtr
 import LLVM.General.Typed.Instructions.Invoke
 import LLVM.General.Typed.Instructions.Phi
+import LLVM.General.Typed.Instructions.Sub
 import LLVM.General.Typed.Instructions.Trunc
 import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf

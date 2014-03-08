@@ -47,6 +47,7 @@ library
     LLVM.General.Typed.Instructions.GetElementPtr
     LLVM.General.Typed.Instructions.Invoke
     LLVM.General.Typed.Instructions.Phi
+    LLVM.General.Typed.Instructions.Sub
     LLVM.General.Typed.Instructions.Trunc
     LLVM.General.Typed.Module
     LLVM.General.Typed.Num
