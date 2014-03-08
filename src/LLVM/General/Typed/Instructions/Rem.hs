@@ -1,6 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
@@ -25,6 +25,25 @@ import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
+irem
+  :: forall a cy cx
+   . Bits a
+  => Value cx a
+  -> Value cy a
+  -> Value (cx `Weakest` cy) a
+irem = vmap2 f g where
+  si = isSigned (undefined :: a)
+  (f, gf) = if si then (Constant.SRem, AST.SRem) else (Constant.URem, AST.URem)
+  g x y = nameInstruction $ gf x y []
+
+frem
+  :: Value cx a
+  -> Value cy a
+  -> Value (cx `Weakest` cy) a
+frem = vmap2 f g where
+  f = Constant.FRem
+  g x y = nameInstruction $ AST.FRem x y []
+
 class Rem (classification :: Classification) where
   -- nasty :(
   type RemConstraint classification a :: Constraint
@@ -37,20 +56,17 @@ class Rem (classification :: Classification) where
 
 instance Rem 'IntegerClass where
   type RemConstraint 'IntegerClass a = Bits a
-  vrem
-    :: forall cx a cy . (ClassificationOf (Value (cx `Weakest` cy) a) ~ 'IntegerClass, RemConstraint 'IntegerClass a)
-    => Value cx a
-    -> Value cy a
-    -> Value (cx `Weakest` cy) a
-  vrem = vmap2 f g where
-    si = isSigned (undefined :: a)
-    (f, gf) = if si then (Constant.SRem, AST.SRem) else (Constant.URem, AST.URem)
-    g x y = nameInstruction $ gf x y []
+  vrem = irem
+
+instance Rem ('VectorClass 'IntegerClass) where
+  type RemConstraint ('VectorClass 'IntegerClass) a = Bits a
+  vrem = irem
+
+instance Rem ('VectorClass 'FloatingPointClass) where
+  vrem = frem
 
 instance Rem 'FloatingPointClass where
- vrem = vmap2 f g where
-   f = Constant.FRem
-   g x y = nameInstruction $ AST.FRem x y []
+  vrem = frem
 
 type family CanRem (a :: *) (b :: *) :: Constraint
 type instance CanRem (Value cx a) (Value cy a) = (Rem (ClassificationOf (Value (cx `Weakest` cy) a)), RemConstraint (ClassificationOf (Value (cx `Weakest` cy) a)) a)

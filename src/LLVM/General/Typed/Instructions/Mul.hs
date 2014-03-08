@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -21,6 +22,22 @@ import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
+imul
+  :: Value cx a
+  -> Value cy a
+  -> Value (cx `Weakest` cy) a
+imul = vmap2 f g where
+  f = Constant.Mul False False
+  g x y = nameInstruction $ AST.Mul False False x y []
+
+fmul
+  :: Value cx a
+  -> Value cy a
+  -> Value (cx `Weakest` cy) a
+fmul = vmap2 f g where
+  f = Constant.FMul
+  g x y = nameInstruction $ AST.FMul x y []
+
 class Mul (classification :: Classification) where
   vmul
     :: ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
@@ -29,14 +46,16 @@ class Mul (classification :: Classification) where
     -> Value (cx `Weakest` cy) a
 
 instance Mul 'IntegerClass where
- vmul = vmap2 f g where
-   f = Constant.Mul False False
-   g x y = nameInstruction $ AST.Mul False False x y []
+  vmul = imul
+
+instance Mul ('VectorClass 'IntegerClass) where
+  vmul = imul
 
 instance Mul 'FloatingPointClass where
- vmul = vmap2 f g where
-   f = Constant.FMul
-   g x y = nameInstruction $ AST.FMul x y []
+  vmul = fmul
+
+instance Mul ('VectorClass 'FloatingPointClass) where
+  vmul = fmul
 
 type family CanMul (a :: *) (b :: *) :: Constraint
 type instance CanMul (Value cx a) (Value cy a) = Mul (ClassificationOf (Value (cx `Weakest` cy) a))

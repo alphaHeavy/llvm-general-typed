@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -21,6 +22,22 @@ import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
+isub
+  :: Value cx a
+  -> Value cy a
+  -> Value (cx `Weakest` cy) a
+isub = vmap2 f g where
+  f = Constant.Sub False False
+  g x y = nameInstruction $ AST.Sub False False x y []
+
+fsub
+  :: Value cx a
+  -> Value cy a
+  -> Value (cx `Weakest` cy) a
+fsub = vmap2 f g where
+  f = Constant.FSub
+  g x y = nameInstruction $ AST.FSub x y []
+
 class Sub (classification :: Classification) where
   vsub
     :: ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
@@ -29,14 +46,16 @@ class Sub (classification :: Classification) where
     -> Value (cx `Weakest` cy) a
 
 instance Sub 'IntegerClass where
- vsub = vmap2 f g where
-   f = Constant.Sub False False
-   g x y = nameInstruction $ AST.Sub False False x y []
+  vsub = isub
+
+instance Sub ('VectorClass 'IntegerClass) where
+  vsub = isub
 
 instance Sub 'FloatingPointClass where
- vsub = vmap2 f g where
-   f = Constant.FSub
-   g x y = nameInstruction $ AST.FSub x y []
+  vsub = fsub
+
+instance Sub ('VectorClass 'FloatingPointClass) where
+  vsub = fsub
 
 type family CanSub (a :: *) (b :: *) :: Constraint
 type instance CanSub (Value cx a) (Value cy a) = Sub (ClassificationOf (Value (cx `Weakest` cy) a))

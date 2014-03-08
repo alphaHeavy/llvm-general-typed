@@ -1,6 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
@@ -25,6 +25,26 @@ import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
+idiv
+  :: forall cx cy a
+   . Bits a
+  => Value cx a
+  -> Value cy a
+  -> Value (cx `Weakest` cy) a
+idiv = vmap2 f g where
+  si = isSigned (undefined :: a)
+  (cf, gf) = if si then (Constant.SDiv, AST.SDiv) else (Constant.UDiv, AST.UDiv)
+  f = cf False
+  g x y = nameInstruction $ gf False x y []
+
+fdiv
+  :: Value cx a
+  -> Value cy a
+  -> Value (cx `Weakest` cy) a
+fdiv = vmap2 f g where
+  f = Constant.FDiv
+  g x y = nameInstruction $ AST.FDiv x y []
+
 class Div (classification :: Classification) where
   -- nasty :(
   type DivConstraint classification a :: Constraint
@@ -37,21 +57,17 @@ class Div (classification :: Classification) where
 
 instance Div 'IntegerClass where
   type DivConstraint 'IntegerClass a = Bits a
-  vdiv
-    :: forall cx a cy . (ClassificationOf (Value (cx `Weakest` cy) a) ~ 'IntegerClass, DivConstraint 'IntegerClass a)
-    => Value cx a
-    -> Value cy a
-    -> Value (cx `Weakest` cy) a
-  vdiv = vmap2 f g where
-    si = isSigned (undefined :: a)
-    (cf, gf) = if si then (Constant.SDiv, AST.SDiv) else (Constant.UDiv, AST.UDiv)
-    f = cf False
-    g x y = nameInstruction $ gf False x y []
+  vdiv = idiv
+
+instance Div ('VectorClass 'IntegerClass) where
+  type DivConstraint ('VectorClass 'IntegerClass) a = Bits a
+  vdiv = idiv
 
 instance Div 'FloatingPointClass where
- vdiv = vmap2 f g where
-   f = Constant.FDiv
-   g x y = nameInstruction $ AST.FDiv x y []
+  vdiv = fdiv
+
+instance Div ('VectorClass 'FloatingPointClass) where
+  vdiv = fdiv
 
 type family CanDiv (a :: *) (b :: *) :: Constraint
 type instance CanDiv (Value cx a) (Value cy a) = (Div (ClassificationOf (Value (cx `Weakest` cy) a)), DivConstraint (ClassificationOf (Value (cx `Weakest` cy) a)) a)
