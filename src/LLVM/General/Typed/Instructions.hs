@@ -53,10 +53,8 @@ module LLVM.General.Typed.Instructions
   , trunc
   -- , zext
   -- , sext
-  -- , fptoui
-  -- , fptosi
-  -- , uitofp
-  -- , sitofp
+  , inttofp
+  , fptoint
   -- , ptrtoint
   -- , inttoptr
   , bitcast
@@ -92,7 +90,9 @@ import LLVM.General.Typed.FreshName
 import LLVM.General.Typed.Function
 import LLVM.General.Typed.Instructions.Add
 import LLVM.General.Typed.Instructions.Call
+import LLVM.General.Typed.Instructions.FPToInt
 import LLVM.General.Typed.Instructions.GetElementPtr
+import LLVM.General.Typed.Instructions.IntToFP
 import LLVM.General.Typed.Instructions.Invoke
 import LLVM.General.Typed.Instructions.Phi
 import LLVM.General.Typed.Instructions.Sub
