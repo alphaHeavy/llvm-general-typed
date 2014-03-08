@@ -41,6 +41,7 @@ library
     LLVM.General.Typed.Function
     LLVM.General.Typed.FunctionDefinition
     LLVM.General.Typed.Instructions
+    LLVM.General.Typed.Instructions.Add
     LLVM.General.Typed.Instructions.Apply
     LLVM.General.Typed.Instructions.Call
     LLVM.General.Typed.Instructions.GetElementPtr
