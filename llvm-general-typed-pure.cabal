@@ -49,6 +49,7 @@ library
     LLVM.General.Typed.Instructions.GetElementPtr
     LLVM.General.Typed.Instructions.IntToFP
     LLVM.General.Typed.Instructions.Invoke
+    LLVM.General.Typed.Instructions.Mul
     LLVM.General.Typed.Instructions.Phi
     LLVM.General.Typed.Instructions.Sub
     LLVM.General.Typed.Instructions.Trunc

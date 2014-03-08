@@ -21,7 +21,7 @@ module LLVM.General.Typed.Instructions
   -- * Binary Operations
   , add
   , sub
-  -- , mul
+  , mul
   -- , div
   -- , rem
   -- * Bitwise Binary Operation
@@ -94,6 +94,7 @@ import LLVM.General.Typed.Instructions.FPToInt
 import LLVM.General.Typed.Instructions.GetElementPtr
 import LLVM.General.Typed.Instructions.IntToFP
 import LLVM.General.Typed.Instructions.Invoke
+import LLVM.General.Typed.Instructions.Mul
 import LLVM.General.Typed.Instructions.Phi
 import LLVM.General.Typed.Instructions.Sub
 import LLVM.General.Typed.Instructions.Trunc
