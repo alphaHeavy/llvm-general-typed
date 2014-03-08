@@ -90,13 +90,13 @@ import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.BlockAddress
 import LLVM.General.Typed.FreshName
 import LLVM.General.Typed.Function
+import LLVM.General.Typed.Instructions.Add
 import LLVM.General.Typed.Instructions.Call
 import LLVM.General.Typed.Instructions.GetElementPtr
 import LLVM.General.Typed.Instructions.Invoke
 import LLVM.General.Typed.Instructions.Phi
 import LLVM.General.Typed.Instructions.Trunc
 import LLVM.General.Typed.Value
-import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
@@ -225,31 +225,6 @@ bitcast = vmap1' f g where
   vt = valueType (Proxy :: Proxy (Value const b))
   f v = Constant.BitCast v vt
   g v = nameInstruction $ AST.BitCast v vt []
-
-class Add (classification :: Classification) where
-  vadd
-    :: ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
-    => Value cx a
-    -> Value cy a
-    -> Value (cx `Weakest` cy) a
-
-instance Add 'IntegerClass where
- vadd = vmap2 f g where
-   f = Constant.Add False False
-   g x y = nameInstruction $ AST.Add False False x y []
-
-instance Add 'FloatingPointClass where
- vadd = vmap2 f g where
-   f = Constant.FAdd
-   g x y = nameInstruction $ AST.FAdd x y []
-
-
-add
-  :: (Add (ClassificationOf (Value (cx `Weakest` cy) a)))
-  => Value cx a
-  -> Value cy a
-  -> BasicBlock (Value (cx `Weakest` cy) a)
-add x y = vjoin $ vadd x y
 
 -- the condition constness must match the result constness. this implies that
 -- if both true and false values are constant the switch condition must also be
