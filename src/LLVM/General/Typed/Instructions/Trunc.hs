@@ -8,7 +8,8 @@
 {-# LANGUAGE TypeOperators #-}
 
 module LLVM.General.Typed.Instructions.Trunc
-  ( Trunc
+  ( CanTrunc
+  , Trunc
   , trunc
   ) where
 
@@ -23,7 +24,7 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
-class VTrunc (classification :: Classification) where
+class Trunc (classification :: Classification) where
   vtrunc
     :: ( ClassificationOf (Value const a) ~ classification
        , ClassificationOf (Value const b) ~ classification
@@ -32,7 +33,7 @@ class VTrunc (classification :: Classification) where
     => Value const a
     -> BasicBlock (Value const b)
 
-instance VTrunc IntegerClass where
+instance Trunc IntegerClass where
   vtrunc
     :: forall const a b
      . ( ClassificationOf (Value const a) ~ IntegerClass
@@ -46,7 +47,7 @@ instance VTrunc IntegerClass where
     f v = Constant.Trunc v vt
     g v = nameInstruction $ AST.Trunc v vt []
 
-instance VTrunc FloatingPointClass where
+instance Trunc FloatingPointClass where
   vtrunc
     :: forall const a b
      . ( ClassificationOf (Value const a) ~ FloatingPointClass
@@ -57,13 +58,13 @@ instance VTrunc FloatingPointClass where
     -> BasicBlock (Value const b)
   vtrunc = vmap1' f g where
     vt = valueType (Proxy :: Proxy (Value const b))
-    f v = Constant.Trunc v vt
+    f v = Constant.FPTrunc v vt
     g v = nameInstruction $ AST.FPTrunc v vt []
 
-type Trunc a b = (ClassificationOf a ~ ClassificationOf b, VTrunc (ClassificationOf b), ValueOf b)
+type CanTrunc a b = (ClassificationOf a ~ ClassificationOf b, Trunc (ClassificationOf b), ValueOf b)
 
 trunc
-  :: ( Trunc (Value const a) (Value const b)
+  :: ( CanTrunc (Value const a) (Value const b)
      , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
   => Value const a
   -> BasicBlock (Value const b)
