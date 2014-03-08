@@ -42,7 +42,7 @@ module LLVM.General.Typed.Instructions
   , alloca
   , load
   , store
-  -- , fence
+  , fence
   -- , cmpxchg
   -- , atomicrmw
   -- ** GetElementPtr
@@ -52,8 +52,6 @@ module LLVM.General.Typed.Instructions
   -- * Conversion Operations
   , trunc
   , ext
-  -- , zext
-  -- , sext
   , inttofp
   , fptoint
   -- , ptrtoint
@@ -278,3 +276,8 @@ instance Cmp 'FloatingPointClass where
   cmp = vmap2' f g where
     f = Constant.FCmp FloatingPointPredicate.OEQ
     g x y = nameInstruction $ AST.FCmp FloatingPointPredicate.OEQ x y []
+
+fence :: AST.Atomicity -> BasicBlock ()
+fence atomicity = do
+  let instr = AST.Fence atomicity []
+  tell [AST.Do instr]
