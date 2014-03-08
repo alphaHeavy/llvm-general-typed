@@ -23,7 +23,7 @@ module LLVM.General.Typed.Instructions
   , sub
   , mul
   , LLVM.General.Typed.Instructions.Div.div
-  -- , rem
+  , LLVM.General.Typed.Instructions.Rem.rem
   -- * Bitwise Binary Operation
   -- , shl
   -- , lshr
@@ -97,6 +97,7 @@ import LLVM.General.Typed.Instructions.IntToFP
 import LLVM.General.Typed.Instructions.Invoke
 import LLVM.General.Typed.Instructions.Mul
 import LLVM.General.Typed.Instructions.Phi
+import LLVM.General.Typed.Instructions.Rem
 import LLVM.General.Typed.Instructions.Sub
 import LLVM.General.Typed.Instructions.Trunc
 import LLVM.General.Typed.Value
