@@ -1,7 +1,7 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -23,7 +23,7 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
-class ClassTrunc (classification :: Classification) where
+class VTrunc (classification :: Classification) where
   vtrunc
     :: ( ClassificationOf (Value const a) ~ classification
        , ClassificationOf (Value const b) ~ classification
@@ -32,7 +32,7 @@ class ClassTrunc (classification :: Classification) where
     => Value const a
     -> BasicBlock (Value const b)
 
-instance ClassTrunc IntegerClass where
+instance VTrunc IntegerClass where
   vtrunc
     :: forall const a b
      . ( ClassificationOf (Value const a) ~ IntegerClass
@@ -46,7 +46,7 @@ instance ClassTrunc IntegerClass where
     f v = Constant.Trunc v vt
     g v = nameInstruction $ AST.Trunc v vt []
 
-instance ClassTrunc FloatingPointClass where
+instance VTrunc FloatingPointClass where
   vtrunc
     :: forall const a b
      . ( ClassificationOf (Value const a) ~ FloatingPointClass
@@ -60,20 +60,11 @@ instance ClassTrunc FloatingPointClass where
     f v = Constant.Trunc v vt
     g v = nameInstruction $ AST.FPTrunc v vt []
 
-class Trunc a b where
-  itrunc :: a -> BasicBlock b
-
-instance
-     ( ClassificationOf (Value const a) ~ ClassificationOf (Value const b)
-     , ClassTrunc (ClassificationOf (Value const b))
-     , ValueOf (Value const b)
-     , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
-  => Trunc (Value const a) (Value const b) where
-  itrunc = vtrunc
+type Trunc a b = (ClassificationOf a ~ ClassificationOf b, VTrunc (ClassificationOf b), ValueOf b)
 
 trunc
   :: ( Trunc (Value const a) (Value const b)
      , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
   => Value const a
   -> BasicBlock (Value const b)
-trunc = itrunc
+trunc = vtrunc
