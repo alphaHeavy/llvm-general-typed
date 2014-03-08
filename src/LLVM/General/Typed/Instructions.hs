@@ -198,26 +198,6 @@ store volatile address value = do
   let instr = AST.Store volatile address' value' Nothing 0 []
   tell [AST.Do instr]
 
-class Name (const :: Constness) where
-  name :: Value const a -> BasicBlock (Value const a)
-
-instance Name 'Constant where
-  name = return
-
-instance Name 'Mutable where
-  name (ValueMutable val) = ValueMutable <$> name val
-  name (ValueOperand _val) = do
-    _n <- freshName
-    undefined
-
-{-
-name :: String -> Value const a -> BasicBlock (Value const a)
-name = undefined
-
-name_ :: Value const a -> BasicBlock (Value const a)
-name_ = undefined
--}
-
 bitcast
   :: forall a b const .
      ( BitsOf (Value const a) ~ BitsOf (Value const b)
