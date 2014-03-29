@@ -21,8 +21,8 @@ import LLVM.General.Typed.Value
 data Classification
   = IntegerClass
   | FloatingPointClass
-  | PointerClass
-  | VectorClass
+  | PointerClass Classification
+  | VectorClass Classification
   | StructureClass
   | LabelClass
   | MetadataClass
@@ -88,7 +88,7 @@ instance ValueOf (Value const Double) where
 
 instance ValueOf (Value const a) => ValueOf (Value const (Ptr a)) where
   type WordsOf (Value const (Ptr a)) = 8 -- TODO: sizeof ptr
-  type ClassificationOf (Value const (Ptr a)) = PointerClass
+  type ClassificationOf (Value const (Ptr a)) = PointerClass (ClassificationOf (Value const a))
   valueType _ = AST.PointerType (valueType (Proxy :: Proxy (Value const a))) (AST.AddrSpace 0)
 
 class StructureTypes a where
