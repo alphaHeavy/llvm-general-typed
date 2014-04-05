@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -18,16 +19,17 @@ import qualified LLVM.General.AST as AST
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.Function
 import LLVM.General.Typed.Instructions.Apply
+import LLVM.General.Typed.Instructions.Call
 import LLVM.General.Typed.Value
 
 invoke
   :: forall args cconv ty
-   . (Generic args, Apply (ArgumentList ty) (Rep args))
+   . CanCall ty args
   => Function cconv ty
   -> args
   -> Label
   -> Label
-  -> BasicBlock (Terminator (Value 'Mutable (ApplicationResult (ArgumentList ty) (Rep args))))
+  -> BasicBlock (Terminator (Value 'Mutable (CallResult ty args)))
 invoke (Function (ValueConstant f) cconv) args (Label returnDest) (Label exceptionDest) = do
   let f' = AST.ConstantOperand f
   args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
