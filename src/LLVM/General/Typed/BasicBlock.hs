@@ -11,7 +11,7 @@ import qualified LLVM.General.AST as AST
 
 import LLVM.General.Typed.FunctionDefinition
 
-newtype BasicBlock a = BasicBlock{runBasicBlock :: RWST () [AST.Named AST.Instruction] BasicBlockState FunctionDefinition a}
+newtype BasicBlock a = BasicBlock{unBasicBlock :: RWST () [AST.Named AST.Instruction] BasicBlockState FunctionDefinition a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState BasicBlockState, MonadWriter [AST.Named AST.Instruction])
 
 liftFunctionDefinition :: FunctionDefinition a -> BasicBlock a
@@ -35,8 +35,8 @@ instance Applicative Terminator where
   pure = Terminator
   Terminator f <*> x = f <$> x
 
-evalBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> FunctionDefinition (a, AST.BasicBlock)
-evalBasicBlock n bb = do
+runBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> FunctionDefinition (AST.BasicBlock, a)
+runBasicBlock n bb = do
   -- pattern match must be lazy to support the MonadFix instance
-  ~(Terminator a, st, instr) <- runRWST (runBasicBlock bb) () (BasicBlockState n Nothing)
-  return (a, AST.BasicBlock (basicBlockName st) instr (fromJust (basicBlockTerminator st)))
+  ~(Terminator a, st, instr) <- runRWST (unBasicBlock bb) () (BasicBlockState n Nothing)
+  return (AST.BasicBlock (basicBlockName st) instr (fromJust (basicBlockTerminator st)), a)
