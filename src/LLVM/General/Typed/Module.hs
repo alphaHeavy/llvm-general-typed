@@ -62,10 +62,14 @@ type family ArgumentList (args :: *) :: [*] where
 class FunctionType a where
   functionType :: proxy a -> [AST.Type]
 
-splitFunctionTypes :: [AST.Type] -> [AST.Type] -> Maybe ([AST.Type], AST.Type)
-splitFunctionTypes [] _ = Nothing
-splitFunctionTypes [x] ys = Just (reverse ys, x)
-splitFunctionTypes (x:xs) ys = splitFunctionTypes xs (x:ys)
+-- |
+-- Convert a type list from Haskell format (argType1 -> argType2 -> returnType)
+-- to ([argType1, argType2], returnType), matching the format expected by llvm
+splitFunctionTypes :: [AST.Type] -> Maybe ([AST.Type], AST.Type)
+splitFunctionTypes = go [] where
+  go  _     [] = Nothing
+  go ys    [x] = Just (reverse ys, x)
+  go ys (x:xs) = go (x:ys) xs
 
 namedFunction
   :: forall a cconv ty
@@ -74,7 +78,7 @@ namedFunction
   -> FunctionDefinition a
   -> Globals (Function ('CallingConv cconv) ty, a)
 namedFunction n defn = do
-  case splitFunctionTypes (functionType (Proxy :: Proxy ty)) [] of
+  case splitFunctionTypes (functionType (Proxy :: Proxy ty)) of
     Nothing -> fail "Empty function types?"
     Just (argumentTypes, returnType) -> do
       let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0, functionDefinitionParameters = []}
