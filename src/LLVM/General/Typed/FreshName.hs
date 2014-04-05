@@ -3,6 +3,7 @@
 module LLVM.General.Typed.FreshName where
 
 import Control.Monad.RWS.Lazy
+import Data.Maybe (isJust)
 import qualified LLVM.General.AST as AST
 
 import LLVM.General.Typed.BasicBlock
@@ -23,6 +24,9 @@ instance FreshName FunctionDefinition where
 
 nameInstruction :: AST.Instruction -> BasicBlock AST.Operand
 nameInstruction instr = do
+  BasicBlockState{basicBlockTerminator = term} <- get
+  when (isJust term) $ fail "Terminator instruction has already been set for the current block"
+
   n <- freshName
   tell [n AST.:= instr]
   return $ AST.LocalReference n
