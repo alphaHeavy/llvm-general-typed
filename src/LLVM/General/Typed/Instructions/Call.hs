@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -5,14 +6,18 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Instructions.Call
-  ( call
+  ( CanCall
+  , CallResult
+  , call
   ) where
 
 import Control.Applicative
 import Data.Proxy
 import GHC.Generics
+import GHC.Exts (Constraint)
 import qualified LLVM.General.AST as AST
 
 import LLVM.General.Typed.BasicBlock
@@ -21,12 +26,18 @@ import LLVM.General.Typed.Function
 import LLVM.General.Typed.Instructions.Apply
 import LLVM.General.Typed.Value
 
+type family CanCall ty args :: Constraint
+type instance CanCall ty args = (Generic args, Apply (ArgumentList ty) (Rep args))
+
+type family CallResult ty args :: *
+type instance CallResult ty args = ApplicationResult (ArgumentList ty) (Rep args)
+
 call
   :: forall args cconv ty
-   . (Generic args, Apply (ArgumentList ty) (Rep args))
+   . CanCall ty args
   => Function cconv ty
   -> args
-  -> BasicBlock (Value 'Mutable (ApplicationResult (ArgumentList ty) (Rep args)))
+  -> BasicBlock (Value 'Mutable (CallResult ty args))
 call (Function (ValueConstant f) cconv) args = do
   let f' = AST.ConstantOperand f
   args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
