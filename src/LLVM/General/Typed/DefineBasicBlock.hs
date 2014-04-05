@@ -3,7 +3,6 @@
 module LLVM.General.Typed.DefineBasicBlock where
 
 import Control.Monad.RWS.Lazy
-import Data.List as List
 import qualified LLVM.General.AST as AST
 
 import LLVM.General.Typed.BasicBlock
@@ -15,6 +14,15 @@ basicBlock bb = do
   n <- freshName
   namedBasicBlock n bb
 
+spliceBasicBlock
+  :: [AST.BasicBlock] -- ^ the original block list
+  -> AST.BasicBlock   -- ^ the block to splice
+  -> [AST.BasicBlock] -- ^ the updated block list, must be >= to the original
+  -> [AST.BasicBlock]
+spliceBasicBlock [] newBlock extraBlocks = newBlock:extraBlocks
+spliceBasicBlock (x:xs) newBlock (_:ys) = x:spliceBasicBlock xs newBlock ys
+spliceBasicBlock _ _ _ = error "BasicBlocks should not be deleted"
+
 class DefineBasicBlock f where
   namedBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> f (a, Label)
 
@@ -24,7 +32,8 @@ instance DefineBasicBlock FunctionDefinition where
     ~(newBlock, x) <- runBasicBlock n bb
     ~st@FunctionDefinitionState{functionDefinitionBasicBlocks = extraBlocks} <- get
     -- splice in the new block before any blocks defined while lifting
-    put st{functionDefinitionBasicBlocks = originalBlocks <> (newBlock:List.drop (List.length originalBlocks) extraBlocks)}
+    let splicedBlocks = spliceBasicBlock originalBlocks newBlock extraBlocks
+    put st{functionDefinitionBasicBlocks = splicedBlocks}
     return (x, Label n)
 
 instance DefineBasicBlock BasicBlock where
