@@ -1,6 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 
-module LLVM.General.Typed.DefineBasicBlock where
+module LLVM.General.Typed.DefineBasicBlock
+  ( DefineBasicBlock
+  , basicBlock
+  , basicBlock_
+  , namedBasicBlock
+  , namedBasicBlock_
+  ) where
 
 import Control.Monad.RWS.Lazy
 import qualified LLVM.General.AST as AST
