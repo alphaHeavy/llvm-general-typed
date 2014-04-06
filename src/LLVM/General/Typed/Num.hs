@@ -1,18 +1,23 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module LLVM.General.Typed.Num where
+-- |
+-- 'Prelude.Num' implementations for 'LLVM.General.Typed.Value'
+module LLVM.General.Typed.Num
+  (
+  ) where
 
 import Data.Int
 import Data.Proxy
 import Data.Word
+import GHC.Exts (Constraint)
 import GHC.TypeLits
 
 import qualified LLVM.General.AST as AST
@@ -28,110 +33,71 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
-signumSigned
-  :: forall const a .
-     ( KnownNat (BitsOf (Value const a))
-     , ClassificationOf (Value const a) ~ IntegerClass
-     , Num (Value const a))
-  => Value const a
+type family NumConstraints (value :: *) (classOf :: Classification) :: Constraint
+type instance NumConstraints (Value const a) classOf =
+  ( KnownNat (BitsOf (Value const a))
+  , ClassificationOf (Value const a) ~ classOf
+  , Weakest const const ~ const
+  , Num (Value const a))
+
+liftValueExpression
+  :: (Value const a -> BasicBlock (Value const a))
   -> Value const a
-signumSigned v =
+  -> Value const a
+liftValueExpression f v =
   case v of
     x@ValueConstant{} -> evalConstantBasicBlock (f x)
     x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
     x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
- where
-  f :: (Weakest const const ~ const)
-    => Value const a
-    -> BasicBlock (Value const a)
-  f x = do
-    gt <- icmp IntegerPredicate.SGT x (0 :: Value const a)
-    lt <- icmp IntegerPredicate.SLT x (0 :: Value const a)
-    il <- select lt (-1 :: Value const a) (0 :: Value const a)
-    ig <- select gt ( 1 :: Value const a) il
-    return ig
+
+signumSigned
+  :: forall const a
+   . NumConstraints (Value const a) IntegerClass
+  => Value const a
+  -> Value const a
+signumSigned = liftValueExpression $ \ x -> do
+  gt <- icmp IntegerPredicate.SGT x (0 :: Value const a)
+  lt <- icmp IntegerPredicate.SLT x (0 :: Value const a)
+  il <- select lt (-1 :: Value const a) (0 :: Value const a)
+  select gt (1 :: Value const a) il
 
 signumUnsigned
-  :: forall const a .
-     ( KnownNat (BitsOf (Value const a))
-     , ClassificationOf (Value const a) ~ IntegerClass
-     , Num (Value const a))
+  :: forall const a
+   . NumConstraints (Value const a) IntegerClass
   => Value const a
   -> Value const a
-signumUnsigned v =
-  case v of
-    x@ValueConstant{} -> evalConstantBasicBlock (f x)
-    x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
-    x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
- where
-  f :: (Weakest const const ~ const)
-    => Value const a
-    -> BasicBlock (Value const a)
-  f x = do
-    gt <- icmp IntegerPredicate.UGT x (0 :: Value const a)
-    select gt (1 :: Value const a) (0 :: Value const a)
+signumUnsigned = liftValueExpression $ \ x -> do
+  gt <- icmp IntegerPredicate.UGT x (0 :: Value const a)
+  select gt (1 :: Value const a) (0 :: Value const a)
 
 signumFloating
-  :: forall const a .
-     ( KnownNat (BitsOf (Value const a))
-     , ClassificationOf (Value const a) ~ FloatingPointClass
-     , Num (Value const a))
+  :: forall const a
+   . NumConstraints (Value const a) FloatingPointClass
   => Value const a
   -> Value const a
-signumFloating v =
-  case v of
-    x@ValueConstant{} -> evalConstantBasicBlock (f x)
-    x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
-    x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
- where
-  f :: (Weakest const const ~ const)
-    => Value const a
-    -> BasicBlock (Value const a)
-  f x = do
-    gt <- fcmp FloatingPointPredicate.OGT x (0 :: Value const a)
-    lt <- fcmp FloatingPointPredicate.OLT x (0 :: Value const a)
-    il <- select lt (-1 :: Value const a) (0 :: Value const a)
-    select gt ( 1 :: Value const a) il
+signumFloating = liftValueExpression $ \ x -> do
+  gt <- fcmp FloatingPointPredicate.OGT x (0 :: Value const a)
+  lt <- fcmp FloatingPointPredicate.OLT x (0 :: Value const a)
+  il <- select lt (-1 :: Value const a) (0 :: Value const a)
+  select gt (1 :: Value const a) il
 
 absSigned
-  :: forall const a .
-     ( KnownNat (BitsOf (Value const a))
-     , ClassificationOf (Value const a) ~ IntegerClass
-     , Num (Value const a))
+  :: forall const a
+   . NumConstraints (Value const a) IntegerClass
   => Value const a
   -> Value const a
-absSigned v = do
-  case v of
-    x@ValueConstant{} -> evalConstantBasicBlock (f x)
-    x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
-    x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
- where
-  f :: (Weakest const const ~ const)
-    => Value const a
-    -> BasicBlock (Value const a)
-  f x = do
-    gt <- icmp IntegerPredicate.SGT x (0 :: Value const a)
-    select gt (0 - x) x
+absSigned = liftValueExpression $ \ x -> do
+  gt <- icmp IntegerPredicate.SGT x (0 :: Value const a)
+  select gt (0 - x) x
 
 absFloating
-  :: forall const a .
-     ( KnownNat (BitsOf (Value const a))
-     , ClassificationOf (Value const a) ~ FloatingPointClass
-     , Num (Value const a))
+  :: forall const a
+   . NumConstraints (Value const a) FloatingPointClass
   => Value const a
   -> Value const a
-absFloating v = do
-  case v of
-    x@ValueConstant{} -> evalConstantBasicBlock (f x)
-    x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
-    x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
- where
-  f :: (Weakest const const ~ const)
-    => Value const a
-    -> BasicBlock (Value const a)
-  f x = do
-    gt <- fcmp FloatingPointPredicate.OGT x (0 :: Value const a)
-    select gt (0 - x) x
+absFloating = liftValueExpression $ \ x -> do
+  gt <- fcmp FloatingPointPredicate.OGT x (0 :: Value const a)
+  select gt (0 - x) x
 
 fromIntegerConst
   :: forall a const . (KnownNat (BitsOf (Value const a)), InjectConstant const)
