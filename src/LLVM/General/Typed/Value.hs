@@ -59,7 +59,9 @@ evalConstantBasicBlock
   :: BasicBlock (Value 'Constant a)
   -> Value 'Constant a
 evalConstantBasicBlock (BasicBlock v) =
-  let m = evalRWST v () (BasicBlockState (error "name") Nothing)
+  -- since this is only being used for Num instances we want to catch accidental
+  -- evaluation of a block that contains mixed constant and operand values
+  let m = evalRWST v () (BasicBlockState (error "evalConstantBasicBlock discards named instructions, is this what you want?") Nothing)
   in fst $ evalState (runFunctionDefinition m) (FunctionDefinitionState [] 0 [])
 
 asOp
