@@ -41,6 +41,16 @@ library
     LLVM.General.Typed.Function
     LLVM.General.Typed.FunctionDefinition
     LLVM.General.Typed.Instructions
+    LLVM.General.Typed.Module
+    LLVM.General.Typed.Num
+    LLVM.General.Typed.VMap
+    LLVM.General.Typed.Value
+    LLVM.General.Typed.ValueJoin
+    LLVM.General.Typed.ValueOf
+    LLVM.General.Typed.ValueSelect
+    LLVM.General.Typed.ValueWrap
+
+  other-modules:
     LLVM.General.Typed.Instructions.Add
     LLVM.General.Typed.Instructions.Apply
     LLVM.General.Typed.Instructions.Call
@@ -55,14 +65,6 @@ library
     LLVM.General.Typed.Instructions.Rem
     LLVM.General.Typed.Instructions.Sub
     LLVM.General.Typed.Instructions.Trunc
-    LLVM.General.Typed.Module
-    LLVM.General.Typed.Num
-    LLVM.General.Typed.VMap
-    LLVM.General.Typed.Value
-    LLVM.General.Typed.ValueJoin
-    LLVM.General.Typed.ValueOf
-    LLVM.General.Typed.ValueSelect
-    LLVM.General.Typed.ValueWrap
 
   build-depends:
     base >=4.7 && <4.8,

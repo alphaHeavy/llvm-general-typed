@@ -7,7 +7,8 @@
 {-# LANGUAGE TypeOperators #-}
 
 module LLVM.General.Typed.Instructions
-  ( -- * Terminator Instructions
+  ( -- * Instructions
+    -- ** Terminator Instructions
     ret
   , ret_
   , condBr
@@ -18,13 +19,13 @@ module LLVM.General.Typed.Instructions
   , invoke
   , unreachable
   , resume
-  -- * Binary Operations
+  -- ** Binary Operations
   , add
   , sub
   , mul
   , LLVM.General.Typed.Instructions.Div.div
   , LLVM.General.Typed.Instructions.Rem.rem
-  -- * Bitwise Binary Operation
+  -- ** Bitwise Binary Operation
   -- , shl
   -- , lshr
   -- , ashr
@@ -38,18 +39,18 @@ module LLVM.General.Typed.Instructions
   -- * Aggregate Operations
   -- , extractvalue
   -- , insertvalue
-  -- * Memory Access and Addressing Operations
+  -- ** Memory Access and Addressing Operations
   , alloca
   , load
   , store
   , fence
   -- , cmpxchg
   -- , atomicrmw
-  -- ** GetElementPtr
+  -- *** GetElementPtr
   , InBounds(..)
   , getElementPtr
   , getElementPtr0
-  -- * Conversion Operations
+  -- ** Conversion Operations
   , trunc
   , ext
   , inttofp
@@ -60,14 +61,14 @@ module LLVM.General.Typed.Instructions
   -- , addrspacecast
   -- * Other Operations
   , undef
-  -- ** Comparisons
+  -- *** Comparisons
   , icmp
   , fcmp
   , Cmp(..)
-  -- ** asdf
+  -- *** asdf
   , Phi(..)
   , select
-  -- ** Function invocation
+  -- *** Function invocation
   , call
   -- , va_arg
   -- , landingpad
