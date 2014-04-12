@@ -12,6 +12,7 @@ module LLVM.General.Typed.Module
   , namedModule
   , FunctionType(..)
   , namedFunction
+  , namedFunction_
   ) where
 
 import Control.Applicative
@@ -71,6 +72,13 @@ splitFunctionTypes = go [] where
   go ys    [x] = Just (reverse ys, x)
   go ys (x:xs) = go (x:ys) xs
 
+namedFunction_
+  :: (FunctionType ty, KnownNat cconv)
+  => String
+  -> FunctionDefinition ()
+  -> Globals (Function ('CallingConv cconv) ty)
+namedFunction_ n defn = fst <$> namedFunction n defn
+
 namedFunction
   :: forall a cconv ty
    . (FunctionType ty, KnownNat cconv)
@@ -97,4 +105,4 @@ namedFunction n defn = do
 
       st <- get
       put $! x:st
-      return (Function (ValueConstant (Constant.GlobalReference name)) (reifyCallingConv (Proxy :: Proxy ('CallingConv cconv))), a)
+      return (createFunction (ValueConstant (Constant.GlobalReference name)), a)

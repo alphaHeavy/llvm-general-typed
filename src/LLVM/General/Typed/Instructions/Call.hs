@@ -38,8 +38,10 @@ call
   => Function cconv ty
   -> args
   -> BasicBlock (Value 'Mutable (CallResult ty args))
-call (Function (ValueConstant f) cconv) args = do
-  let f' = AST.ConstantOperand f
+call function args = do
+  let ValueConstant f = functionValue function
+      f' = AST.ConstantOperand f
+      cconv = functionCallingConv function
   args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
   let instr = AST.Call
         { isTailCall = False
