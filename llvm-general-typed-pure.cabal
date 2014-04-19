@@ -52,7 +52,9 @@ library
 
   other-modules:
     LLVM.General.Typed.Instructions.Add
+    LLVM.General.Typed.Instructions.Alloca
     LLVM.General.Typed.Instructions.Apply
+    LLVM.General.Typed.Instructions.Bitcast
     LLVM.General.Typed.Instructions.Call
     LLVM.General.Typed.Instructions.Div
     LLVM.General.Typed.Instructions.Extend
@@ -60,9 +62,13 @@ library
     LLVM.General.Typed.Instructions.GetElementPtr
     LLVM.General.Typed.Instructions.IntToFP
     LLVM.General.Typed.Instructions.Invoke
+    LLVM.General.Typed.Instructions.Load
     LLVM.General.Typed.Instructions.Mul
     LLVM.General.Typed.Instructions.Phi
     LLVM.General.Typed.Instructions.Rem
+    LLVM.General.Typed.Instructions.Ret
+    LLVM.General.Typed.Instructions.Select
+    LLVM.General.Typed.Instructions.Store
     LLVM.General.Typed.Instructions.Sub
     LLVM.General.Typed.Instructions.Trunc
 
