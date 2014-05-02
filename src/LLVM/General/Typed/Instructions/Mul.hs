@@ -36,7 +36,7 @@ fmul
   -> Value (cx `Weakest` cy) a
 fmul = vmap2 f g where
   f = Constant.FMul
-  g x y = nameInstruction $ AST.FMul x y []
+  g x y = nameInstruction $ AST.FMul AST.NoFastMathFlags x y []
 
 class Mul (classification :: Classification) where
   vmul

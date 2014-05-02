@@ -43,7 +43,7 @@ fdiv
   -> Value (cx `Weakest` cy) a
 fdiv = vmap2 f g where
   f = Constant.FDiv
-  g x y = nameInstruction $ AST.FDiv x y []
+  g x y = nameInstruction $ AST.FDiv AST.NoFastMathFlags x y []
 
 class Div (classification :: Classification) where
   -- nasty :(

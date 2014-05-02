@@ -109,26 +109,26 @@ fromIntegerConst = injectConstant . Constant.Int bits where
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Float) where
   fromInteger = injectConstant . Constant.Float . Float.Single . fromIntegral
   abs = absFloating
-  (+) = vmap2 Constant.FAdd (nameInstruction2 AST.FAdd)
-  (-) = vmap2 Constant.FSub (nameInstruction2 AST.FSub)
-  (*) = vmap2 Constant.FMul (nameInstruction2 AST.FMul)
+  (+) = vmap2 Constant.FAdd (nameInstruction2 (AST.FAdd AST.NoFastMathFlags))
+  (-) = vmap2 Constant.FSub (nameInstruction2 (AST.FSub AST.NoFastMathFlags))
+  (*) = vmap2 Constant.FMul (nameInstruction2 (AST.FMul AST.NoFastMathFlags))
   signum = signumFloating
 
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Double) where
   fromInteger = injectConstant . Constant.Float . Float.Double . fromIntegral
   abs = absFloating
-  (+) = vmap2 Constant.FAdd (nameInstruction2 AST.FAdd)
-  (-) = vmap2 Constant.FSub (nameInstruction2 AST.FSub)
-  (*) = vmap2 Constant.FMul (nameInstruction2 AST.FMul)
+  (+) = vmap2 Constant.FAdd (nameInstruction2 (AST.FAdd AST.NoFastMathFlags))
+  (-) = vmap2 Constant.FSub (nameInstruction2 (AST.FSub AST.NoFastMathFlags))
+  (*) = vmap2 Constant.FMul (nameInstruction2 (AST.FMul AST.NoFastMathFlags))
   signum = signumFloating
 
 instance (InjectConstant const, Weakest const const ~ const, Num (Value const Float)) => Fractional (Value const Float) where
   fromRational = injectConstant . Constant.Float . Float.Single . fromRational
-  (/) = vmap2 Constant.FDiv (nameInstruction2 AST.FDiv)
+  (/) = vmap2 Constant.FDiv (nameInstruction2 (AST.FDiv AST.NoFastMathFlags))
 
 instance (InjectConstant const, Weakest const const ~ const, Num (Value const Double)) => Fractional (Value const Double) where
   fromRational = injectConstant . Constant.Float . Float.Double . fromRational
-  (/) = vmap2 Constant.FDiv (nameInstruction2 AST.FDiv)
+  (/) = vmap2 Constant.FDiv (nameInstruction2 (AST.FDiv AST.NoFastMathFlags))
 
 instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int8) where
   fromInteger = fromIntegerConst

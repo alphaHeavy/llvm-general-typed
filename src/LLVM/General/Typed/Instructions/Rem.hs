@@ -42,7 +42,7 @@ frem
   -> Value (cx `Weakest` cy) a
 frem = vmap2 f g where
   f = Constant.FRem
-  g x y = nameInstruction $ AST.FRem x y []
+  g x y = nameInstruction $ AST.FRem AST.NoFastMathFlags x y []
 
 class Rem (classification :: Classification) where
   -- nasty :(

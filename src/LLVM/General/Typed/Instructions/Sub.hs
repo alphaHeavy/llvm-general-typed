@@ -36,7 +36,7 @@ fsub
   -> Value (cx `Weakest` cy) a
 fsub = vmap2 f g where
   f = Constant.FSub
-  g x y = nameInstruction $ AST.FSub x y []
+  g x y = nameInstruction $ AST.FSub AST.NoFastMathFlags x y []
 
 class Sub (classification :: Classification) where
   vsub

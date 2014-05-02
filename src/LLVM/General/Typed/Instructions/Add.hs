@@ -36,7 +36,7 @@ fadd
   -> Value (cx `Weakest` cy) a
 fadd = vmap2 f g where
   f = Constant.FAdd
-  g x y = nameInstruction $ AST.FAdd x y []
+  g x y = nameInstruction $ AST.FAdd AST.NoFastMathFlags x y []
 
 class Add (classification :: Classification) where
   vadd
