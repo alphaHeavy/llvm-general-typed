@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE PolyKinds #-}
@@ -9,6 +10,7 @@ module LLVM.General.Typed.Value where
 
 import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
+import Data.Typeable
 import GHC.TypeLits (Nat)
 
 import qualified LLVM.General.AST as AST
@@ -28,8 +30,8 @@ data Value (const :: Constness) (a :: *) where
   ValueOperand  :: BasicBlock AST.Operand -> Value 'Mutable a
   ValueConstant :: Constant.Constant      -> Value 'Constant a
 
-data Struct (xs :: [*]) = Struct
-data Array (n :: Nat) (a :: *) = Array
+data Struct (xs :: [*]) = Struct deriving Typeable
+data Array (n :: Nat) (a :: *) = Array deriving Typeable
 
 mutable :: Value 'Constant a -> Value 'Mutable a
 mutable = ValueMutable
