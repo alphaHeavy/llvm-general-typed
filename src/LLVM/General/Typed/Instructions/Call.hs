@@ -12,6 +12,7 @@ module LLVM.General.Typed.Instructions.Call
   ( CanCall
   , CallResult
   , call
+  , tailcall
   ) where
 
 import Control.Applicative
@@ -32,19 +33,20 @@ type instance CanCall ty args = (Generic args, Apply (ArgumentList ty) (Rep args
 type family CallResult ty args :: *
 type instance CallResult ty args = ApplicationResult (ArgumentList ty) (Rep args)
 
-call
+call_
   :: forall args cconv ty
    . CanCall ty args
-  => Function cconv ty
+  => Bool
+  -> Function cconv ty
   -> args
   -> BasicBlock (Value 'Mutable (CallResult ty args))
-call function args = do
+call_ isTailCall function args = do
   let ValueConstant f = functionValue function
       f' = AST.ConstantOperand f
       cconv = functionCallingConv function
   args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
   let instr = AST.Call
-        { isTailCall = False
+        { isTailCall = isTailCall
         , callingConvention = cconv
         , returnAttributes = []
         , function = Right f'
@@ -53,3 +55,19 @@ call function args = do
         , metadata = []
         }
   ValueOperand . return <$> nameInstruction instr
+
+call
+  :: forall args cconv ty
+   . CanCall ty args
+  => Function cconv ty
+  -> args
+  -> BasicBlock (Value 'Mutable (CallResult ty args))
+call = call_ False
+
+tailcall
+  :: forall args cconv ty
+   . CanCall ty args
+  => Function cconv ty
+  -> args
+  -> BasicBlock (Value 'Mutable (CallResult ty args))
+tailcall = call_ True

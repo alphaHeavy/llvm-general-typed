@@ -70,6 +70,7 @@ module LLVM.General.Typed.Instructions
   , select
   -- *** Function invocation
   , call
+  , tailcall
   -- , va_arg
   -- , landingpad
   ) where
