@@ -1,10 +1,12 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Module
   ( Module
@@ -29,6 +31,7 @@ import LLVM.General.Typed.CallingConv
 import LLVM.General.Typed.Function
 import LLVM.General.Typed.FunctionDefinition
 import LLVM.General.Typed.Value
+import LLVM.General.Typed.ValueOf (ValueOf, valueType)
 
 newtype Module a = Module{runModule :: State ModuleState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState ModuleState)
@@ -60,8 +63,14 @@ type family ArgumentList (args :: *) :: [*] where
   ArgumentList (a -> b) = a ': ArgumentList b
   ArgumentList a = '[a]
 
-class FunctionType a where
+class FunctionType (a :: [*]) where
   functionType :: proxy a -> [AST.Type]
+
+instance (ValueOf (Value 'Mutable x), FunctionType xs) => FunctionType (x ': xs) where
+  functionType _ = valueType (Proxy :: Proxy (Value 'Mutable x)) : functionType (Proxy :: Proxy xs)
+
+instance FunctionType '[] where
+  functionType _ = []
 
 -- |
 -- Convert a type list from Haskell format (argType1 -> argType2 -> returnType)
@@ -73,7 +82,7 @@ splitFunctionTypes = go [] where
   go ys (x:xs) = go (x:ys) xs
 
 namedFunction_
-  :: (FunctionType ty, KnownNat cconv)
+  :: (FunctionType (ArgumentList ty), KnownNat cconv)
   => String
   -> FunctionDefinition ()
   -> Globals (Function ('CallingConv cconv) ty)
@@ -81,12 +90,12 @@ namedFunction_ n defn = fst <$> namedFunction n defn
 
 namedFunction
   :: forall a cconv ty
-   . (FunctionType ty, KnownNat cconv)
+   . (FunctionType (ArgumentList ty), KnownNat cconv)
   => String
   -> FunctionDefinition a
   -> Globals (Function ('CallingConv cconv) ty, a)
 namedFunction n defn = do
-  case splitFunctionTypes (functionType (Proxy :: Proxy ty)) of
+  case splitFunctionTypes (functionType (Proxy :: Proxy (ArgumentList ty))) of
     Nothing -> fail "Empty function types?"
     Just (argumentTypes, returnType) -> do
       let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0, functionDefinitionParameters = []}

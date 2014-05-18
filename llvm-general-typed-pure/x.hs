@@ -8,7 +8,6 @@ module Main where
 import Control.Applicative
 import Control.Monad
 import Data.Int
-import Data.Proxy
 import qualified LLVM.General.AST as AST
 import LLVM.General.PrettyPrint (showPretty)
 
@@ -26,7 +25,7 @@ foo = do
       val = 42 + 9
 
   namedModule "foo" $ do
-    _x :: Function C (Proxy [Int, Int]) <- namedFunction_ "bar" $ mdo
+    _x :: Function C (Int32 -> Int64) <- namedFunction_ "bar" $ mdo
       entryBlock <- basicBlock_ $ do
         br secondBlock
 
