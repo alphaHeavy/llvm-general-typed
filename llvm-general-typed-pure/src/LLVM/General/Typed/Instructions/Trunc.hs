@@ -45,7 +45,7 @@ instance Trunc IntegerClass where
   vtrunc = vmap1' f g where
     vt = valueType (Proxy :: Proxy (Value const b))
     f v = Constant.Trunc v vt
-    g v = nameInstruction $ AST.Trunc v vt []
+    g v = nameInstruction vt $ AST.Trunc v vt []
 
 instance Trunc FloatingPointClass where
   vtrunc
@@ -59,7 +59,7 @@ instance Trunc FloatingPointClass where
   vtrunc = vmap1' f g where
     vt = valueType (Proxy :: Proxy (Value const b))
     f v = Constant.FPTrunc v vt
-    g v = nameInstruction $ AST.FPTrunc v vt []
+    g v = nameInstruction vt $ AST.FPTrunc v vt []
 
 type CanTrunc a b = (ClassificationOf a ~ ClassificationOf b, Trunc (ClassificationOf b), ValueOf b)
 

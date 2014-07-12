@@ -25,7 +25,8 @@ foo = do
       val = 42 + 9
 
   namedModule "foo" $ do
-    _x :: Function C (Int32 -> Int64) <- namedFunction_ "bar" $ mdo
+    -- _x :: Function C (Int32 -> Int64) <- namedFunction_ "bar" $ mdo
+    _x :: Function C Int64 <- namedFunction_ "bar" $ mdo
       entryBlock <- basicBlock_ $ do
         br secondBlock
 

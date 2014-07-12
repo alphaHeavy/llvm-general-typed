@@ -22,18 +22,19 @@ instance FreshName FunctionDefinition where
     put $! st{functionDefinitionFreshId = fresh + 1}
     return $ AST.UnName fresh
 
-nameInstruction :: AST.Instruction -> BasicBlock AST.Operand
-nameInstruction instr = do
+nameInstruction :: AST.Type -> AST.Instruction -> BasicBlock AST.Operand
+nameInstruction ty instr = do
   BasicBlockState{basicBlockTerminator = term} <- get
   when (isJust term) $ fail "Terminator instruction has already been set for the current block"
 
   n <- freshName
   tell [n AST.:= instr]
-  return $ AST.LocalReference n
+  return $ AST.LocalReference ty n
 
 nameInstruction2
-  :: (AST.Operand -> AST.Operand -> AST.InstructionMetadata -> AST.Instruction)
+  :: AST.Type
+  -> (AST.Operand -> AST.Operand -> AST.InstructionMetadata -> AST.Instruction)
   -> AST.Operand
   -> AST.Operand
   -> BasicBlock AST.Operand
-nameInstruction2 f x y = nameInstruction (f x y [])
+nameInstruction2 ty f x y = nameInstruction ty (f x y [])

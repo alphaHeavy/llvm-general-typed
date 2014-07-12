@@ -31,4 +31,4 @@ fptoint = vmap1' f g where
   (cf, gf) = if si then (Constant.FPToSI, AST.FPToSI) else (Constant.FPToUI, AST.FPToUI)
   vt = valueType (Proxy :: Proxy (Value const b))
   f v = cf v vt
-  g v = nameInstruction $ gf v vt []
+  g v = nameInstruction vt $ gf v vt []

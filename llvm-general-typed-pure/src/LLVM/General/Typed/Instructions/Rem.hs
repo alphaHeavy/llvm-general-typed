@@ -1,5 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -14,6 +15,7 @@ module LLVM.General.Typed.Instructions.Rem
   ) where
 
 import Data.Bits
+import Data.Proxy
 import GHC.Exts (Constraint)
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
@@ -27,29 +29,33 @@ import LLVM.General.Typed.VMap
 
 irem
   :: forall a cy cx
-   . Bits a
+   . (Bits a, ValueOf (Value (cx `Weakest` cy) a))
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 irem = vmap2 f g where
   si = isSigned (undefined :: a)
   (f, gf) = if si then (Constant.SRem, AST.SRem) else (Constant.URem, AST.URem)
-  g x y = nameInstruction $ gf x y []
+  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  g x y = nameInstruction ty $ gf x y []
 
 frem
-  :: Value cx a
+  :: forall a cy cx
+   . ValueOf (Value (cx `Weakest` cy) a)
+  => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 frem = vmap2 f g where
   f = Constant.FRem
-  g x y = nameInstruction $ AST.FRem AST.NoFastMathFlags x y []
+  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  g x y = nameInstruction ty $ AST.FRem AST.NoFastMathFlags x y []
 
 class Rem (classification :: Classification) where
   -- nasty :(
   type RemConstraint classification a :: Constraint
   type RemConstraint classification a = ()
   vrem
-    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, RemConstraint classification a)
+    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, RemConstraint classification a, ValueOf (Value (cx `Weakest` cy) a))
     => Value cx a
     -> Value cy a
     -> Value (cx `Weakest` cy) a
@@ -69,7 +75,7 @@ instance Rem 'FloatingPointClass where
   vrem = frem
 
 type family CanRem (a :: *) (b :: *) :: Constraint
-type instance CanRem (Value cx a) (Value cy a) = (Rem (ClassificationOf (Value (cx `Weakest` cy) a)), RemConstraint (ClassificationOf (Value (cx `Weakest` cy) a)) a)
+type instance CanRem (Value cx a) (Value cy a) = (Rem (ClassificationOf (Value (cx `Weakest` cy) a)), RemConstraint (ClassificationOf (Value (cx `Weakest` cy) a)) a, ValueOf (Value (cx `Weakest` cy) a))
 
 rem
   :: CanRem (Value cx a) (Value cy a)

@@ -38,6 +38,7 @@ import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.FreshName
 import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueJoin
+import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.ValueSelect
 
 data InBounds
@@ -66,7 +67,7 @@ class GetElementIndex a i where
 -- an instance of 'Typeable'. Use this function with care.
 unsafeGetElementPtr
   :: forall a b const i
-   . (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i))
+   . (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i), ValueOf (Value (GetElementPtrConstness const i) b))
   => InBounds
   -> Value const a
   -> i
@@ -74,13 +75,14 @@ unsafeGetElementPtr
 unsafeGetElementPtr bounds value index = do
   elementIdx <- getElementIndex (Proxy :: Proxy a) index
   let inbounds = case bounds of InBounds -> True; OutOfBounds -> False
+      ty = valueType (Proxy :: Proxy (Value (GetElementPtrConstness const i) b))
   case elementIdx of
     MutableElementIndex idx -> vjoin (vselect f g value) where
       f _ = error "This should be unreachable, GEP on a mutable value is mutable"
-      g x = nameInstruction $ AST.GetElementPtr inbounds x idx []
+      g x = nameInstruction ty $ AST.GetElementPtr inbounds x idx []
     ConstantElementIndex idx -> vjoin (vselect f g value) where
       f y = Constant.GetElementPtr inbounds y idx
-      g x = nameInstruction $ AST.GetElementPtr inbounds x (fmap AST.ConstantOperand idx) []
+      g x = nameInstruction ty $ AST.GetElementPtr inbounds x (fmap AST.ConstantOperand idx) []
 
 data GetElementPtrTest a
   = GetElementPtrTypeMatch a   -- ^ The result type matches.
@@ -92,7 +94,7 @@ data GetElementPtrTest a
 -- Note: this is currently not implemented and always returns
 -- 'GetElementPtrTypeUnknown' even when the types match.
 tryGetElementPtr
-  :: (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i))
+  :: (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i), ValueOf (Value (GetElementPtrConstness const i) b))
   => InBounds
   -> Value const a
   -> i
@@ -220,7 +222,8 @@ instance (Generic idx, GGetElementIndex a (Rep idx)) => GetElementIndex a (Index
 -- (0 :: 'Value' 'Constant' 'Int32', 'Proxy' :: 'Proxy' 1, 2 :: 'Value' 'Constant' 'Int32')
 -- @
 getElementPtr
-  :: forall a const index . (GetElementIndex (Ptr a) index, ValueSelect const (GetElementPtrConstness const index))
+  :: forall a const index
+   . (GetElementIndex (Ptr a) index, ValueSelect const (GetElementPtrConstness const index), ValueOf (Value (GetElementPtrConstness const index) (GetElementPtrType (Ptr a) index)))
   => InBounds
   -> Value const (Ptr a)
   -> index
@@ -231,7 +234,7 @@ type Index0 index = Index (Proxy 0, index)
 
 getElementPtr0
   :: forall a const index
-   . (GetElementIndex a index, ValueSelect const (GetElementPtrConstness const (Index0 index)))
+   . (GetElementIndex a index, ValueSelect const (GetElementPtrConstness const (Index0 index)), (ValueOf (Value (GetElementPtrConstness const (Index0 index)) (GetElementPtrType a index))))
   => InBounds
   -> Value const (Ptr a)
   -> index

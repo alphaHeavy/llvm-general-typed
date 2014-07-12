@@ -37,4 +37,4 @@ ext = vmap1' f g where
   (cf, gf) = if si then (Constant.SExt, AST.SExt) else (Constant.ZExt, AST.ZExt)
   vt = valueType (Proxy :: Proxy (Value const b))
   f v = cf v vt
-  g v = nameInstruction $ gf v vt []
+  g v = nameInstruction vt $ gf v vt []

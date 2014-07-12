@@ -26,9 +26,10 @@ import LLVM.General.Typed.FreshName
 import LLVM.General.Typed.Function
 import LLVM.General.Typed.Instructions.Apply
 import LLVM.General.Typed.Value
+import LLVM.General.Typed.ValueOf
 
 type family CanCall ty args :: Constraint
-type instance CanCall ty args = (Generic args, Apply (ArgumentList ty) (Rep args))
+type instance CanCall ty args = (Generic args, Apply (ArgumentList ty) (Rep args), ValueOf (Value 'Mutable (CallResult ty args)))
 
 type family CallResult ty args :: *
 type instance CallResult ty args = ApplicationResult (ArgumentList ty) (Rep args)
@@ -54,7 +55,8 @@ call_ isTailCall function args = do
         , functionAttributes = []
         , metadata = []
         }
-  ValueOperand . return <$> nameInstruction instr
+      ty = valueType (Proxy :: Proxy (Value 'Mutable (CallResult ty args)))
+  ValueOperand . return <$> nameInstruction ty instr
 
 call
   :: forall args cconv ty

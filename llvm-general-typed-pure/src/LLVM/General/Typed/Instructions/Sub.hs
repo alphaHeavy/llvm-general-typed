@@ -1,6 +1,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -11,6 +13,7 @@ module LLVM.General.Typed.Instructions.Sub
   , sub
   ) where
 
+import Data.Proxy
 import GHC.Exts (Constraint)
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
@@ -23,24 +26,30 @@ import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
 isub
-  :: Value cx a
+  :: forall a cx cy
+   . ValueOf (Value (cx `Weakest` cy) a)
+  => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 isub = vmap2 f g where
   f = Constant.Sub False False
-  g x y = nameInstruction $ AST.Sub False False x y []
+  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  g x y = nameInstruction ty $ AST.Sub False False x y []
 
 fsub
-  :: Value cx a
+  :: forall a cx cy
+   . ValueOf (Value (cx `Weakest` cy) a)
+  => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 fsub = vmap2 f g where
   f = Constant.FSub
-  g x y = nameInstruction $ AST.FSub AST.NoFastMathFlags x y []
+  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  g x y = nameInstruction ty $ AST.FSub AST.NoFastMathFlags x y []
 
 class Sub (classification :: Classification) where
   vsub
-    :: ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
+    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, ValueOf (Value (cx `Weakest` cy) a))
     => Value cx a
     -> Value cy a
     -> Value (cx `Weakest` cy) a
@@ -58,7 +67,7 @@ instance Sub ('VectorClass 'FloatingPointClass) where
   vsub = fsub
 
 type family CanSub (a :: *) (b :: *) :: Constraint
-type instance CanSub (Value cx a) (Value cy a) = Sub (ClassificationOf (Value (cx `Weakest` cy) a))
+type instance CanSub (Value cx a) (Value cy a) = (Sub (ClassificationOf (Value (cx `Weakest` cy) a)), ValueOf (Value (cx `Weakest` cy) a))
 
 sub
   :: CanSub (Value cx a) (Value cy a)

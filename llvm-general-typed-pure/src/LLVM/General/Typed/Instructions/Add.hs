@@ -1,6 +1,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -11,6 +13,7 @@ module LLVM.General.Typed.Instructions.Add
   , add
   ) where
 
+import Data.Proxy
 import GHC.Exts (Constraint)
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
@@ -23,24 +26,30 @@ import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
 iadd
-  :: Value cx a
+  :: forall a cx cy
+   . ValueOf (Value (cx `Weakest` cy) a)
+  => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 iadd = vmap2 f g where
   f = Constant.Add False False
-  g x y = nameInstruction $ AST.Add False False x y []
+  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  g x y = nameInstruction ty $ AST.Add False False x y []
 
 fadd
-  :: Value cx a
+  :: forall a cx cy
+   . ValueOf (Value (cx `Weakest` cy) a)
+  => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 fadd = vmap2 f g where
   f = Constant.FAdd
-  g x y = nameInstruction $ AST.FAdd AST.NoFastMathFlags x y []
+  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  g x y = nameInstruction ty $ AST.FAdd AST.NoFastMathFlags x y []
 
 class Add (classification :: Classification) where
   vadd
-    :: ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
+    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, ValueOf (Value (cx `Weakest` cy) a))
     => Value cx a
     -> Value cy a
     -> Value (cx `Weakest` cy) a
@@ -58,7 +67,7 @@ instance Add ('VectorClass 'FloatingPointClass) where
   vadd = fadd
 
 type family CanAdd (a :: *) (b :: *) :: Constraint
-type instance CanAdd (Value cx a) (Value cy a) = Add (ClassificationOf (Value (cx `Weakest` cy) a))
+type instance CanAdd (Value cx a) (Value cy a) = (Add (ClassificationOf (Value (cx `Weakest` cy) a)), ValueOf (Value (cx `Weakest` cy) a))
 
 add
   :: CanAdd (Value cx a) (Value cy a)

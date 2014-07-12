@@ -30,7 +30,7 @@ instance Phi (Value const) where
       return (valOp, origin)
 
     let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
-    ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
+    ValueOperand . return <$> nameInstruction ty (AST.Phi ty incomingValues' [])
 
 instance Phi AnyValue where
   phi :: forall a . ValueOf (Value 'Mutable a) => [(AnyValue a, Label)] -> BasicBlock (Value 'Mutable a)
@@ -41,4 +41,4 @@ instance Phi AnyValue where
       return (valOp, origin)
 
     let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
-    ValueOperand . return <$> nameInstruction (AST.Phi ty incomingValues' [])
+    ValueOperand . return <$> nameInstruction ty (AST.Phi ty incomingValues' [])

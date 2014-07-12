@@ -106,6 +106,7 @@ namedFunction n defn = do
           ~(a, defSt') = runState (runFunctionDefinition defn) defnSt
           name = AST.Name n
           params = functionDefinitionParameters defSt'
+          ft = AST.FunctionType returnType argumentTypes False
           x = AST.functionDefaults
                { Global.basicBlocks = functionDefinitionBasicBlocks defSt'
                , Global.name = AST.Name n
@@ -113,9 +114,10 @@ namedFunction n defn = do
                , Global.returnType = returnType
                }
 
-      when (argumentTypes /= [ty | Global.Parameter ty _ _ <- params]) $
-        fail "Parameter type mismatch"
+      let paramTy = [ty | Global.Parameter ty _ _ <- params]
+      when (argumentTypes /= paramTy) $
+        fail $ "Parameter type mismatch: " ++ show argumentTypes ++ " /= " ++ show paramTy
 
       st <- get
       put $! x:st
-      return (createFunction (ValueConstant (Constant.GlobalReference name)), a)
+      return (createFunction (ValueConstant (Constant.GlobalReference ft name)), a)

@@ -36,6 +36,11 @@ class ValueOf (a :: *) where
   type ClassificationOf a :: Classification
   valueType :: proxy a -> AST.Type
 
+instance ValueOf (Value const Bool) where
+  type WordsOf (Value const Bool) = 1
+  type ClassificationOf (Value const Bool) = IntegerClass
+  valueType _ = AST.IntegerType 8
+
 instance ValueOf (Value const Int8) where
   type WordsOf (Value const Int8) = 1
   type ClassificationOf (Value const Int8) = IntegerClass

@@ -29,4 +29,4 @@ alloca = do
       ne = natVal (Proxy :: Proxy (ElementsOf (Value 'Mutable a)))
   -- @TODO: the hardcoded 64 should probably be the target word size?
       inst = AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
-  ValueOperand . return <$> nameInstruction inst
+  ValueOperand . return <$> nameInstruction ty inst

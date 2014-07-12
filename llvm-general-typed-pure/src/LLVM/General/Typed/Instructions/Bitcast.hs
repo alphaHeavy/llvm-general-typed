@@ -26,4 +26,4 @@ bitcast
 bitcast = vmap1' f g where
   vt = valueType (Proxy :: Proxy (Value const b))
   f v = Constant.BitCast v vt
-  g v = nameInstruction $ AST.BitCast v vt []
+  g v = nameInstruction vt $ AST.BitCast v vt []

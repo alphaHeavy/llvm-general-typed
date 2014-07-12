@@ -167,7 +167,8 @@ icmp
   -> BasicBlock (Value (cx `Weakest` cy) Bool)
 icmp p = vmap2' f g where
   f = Constant.ICmp p
-  g x y = nameInstruction $ AST.ICmp p x y []
+  ty = valueType (Proxy :: Proxy (Value const Bool))
+  g x y = nameInstruction ty $ AST.ICmp p x y []
 
 fcmp
   :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ FloatingPointClass)
@@ -177,7 +178,8 @@ fcmp
   -> BasicBlock (Value (cx `Weakest` cy) Bool)
 fcmp p = vmap2' f g where
   f = Constant.FCmp p
-  g x y = nameInstruction $ AST.FCmp p x y []
+  ty = valueType (Proxy :: Proxy (Value const Bool))
+  g x y = nameInstruction ty $ AST.FCmp p x y []
 
 class Cmp (classification :: Classification) where
   cmp
@@ -189,12 +191,14 @@ class Cmp (classification :: Classification) where
 instance Cmp 'IntegerClass where
   cmp = vmap2' f g where
     f = Constant.ICmp IntegerPredicate.EQ
-    g x y = nameInstruction $ AST.ICmp IntegerPredicate.EQ x y []
+    ty = valueType (Proxy :: Proxy (Value const Bool))
+    g x y = nameInstruction ty $ AST.ICmp IntegerPredicate.EQ x y []
 
 instance Cmp 'FloatingPointClass where
   cmp = vmap2' f g where
     f = Constant.FCmp FloatingPointPredicate.OEQ
-    g x y = nameInstruction $ AST.FCmp FloatingPointPredicate.OEQ x y []
+    ty = valueType (Proxy :: Proxy (Value const Bool))
+    g x y = nameInstruction ty $ AST.FCmp FloatingPointPredicate.OEQ x y []
 
 fence :: AST.Atomicity -> BasicBlock ()
 fence atomicity = do

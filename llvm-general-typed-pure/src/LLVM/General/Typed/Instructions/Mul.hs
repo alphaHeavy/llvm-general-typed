@@ -1,6 +1,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -11,6 +13,7 @@ module LLVM.General.Typed.Instructions.Mul
   , mul
   ) where
 
+import Data.Proxy
 import GHC.Exts (Constraint)
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
@@ -23,24 +26,30 @@ import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
 imul
-  :: Value cx a
+  :: forall a cx cy
+   . ValueOf (Value (cx `Weakest` cy) a)
+  => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 imul = vmap2 f g where
   f = Constant.Mul False False
-  g x y = nameInstruction $ AST.Mul False False x y []
+  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  g x y = nameInstruction ty $ AST.Mul False False x y []
 
 fmul
-  :: Value cx a
+  :: forall a cx cy
+   . ValueOf (Value (cx `Weakest` cy) a)
+  => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 fmul = vmap2 f g where
   f = Constant.FMul
-  g x y = nameInstruction $ AST.FMul AST.NoFastMathFlags x y []
+  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  g x y = nameInstruction ty $ AST.FMul AST.NoFastMathFlags x y []
 
 class Mul (classification :: Classification) where
   vmul
-    :: ClassificationOf (Value (cx `Weakest` cy) a) ~ classification
+    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, ValueOf (Value (cx `Weakest` cy) a))
     => Value cx a
     -> Value cy a
     -> Value (cx `Weakest` cy) a
@@ -58,7 +67,7 @@ instance Mul ('VectorClass 'FloatingPointClass) where
   vmul = fmul
 
 type family CanMul (a :: *) (b :: *) :: Constraint
-type instance CanMul (Value cx a) (Value cy a) = Mul (ClassificationOf (Value (cx `Weakest` cy) a))
+type instance CanMul (Value cx a) (Value cy a) = (Mul (ClassificationOf (Value (cx `Weakest` cy) a)), ValueOf (Value (cx `Weakest` cy) a))
 
 mul
   :: CanMul (Value cx a) (Value cy a)
