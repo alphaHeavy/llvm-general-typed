@@ -8,6 +8,7 @@ module LLVM.General.Typed
   , namedFunction_
   -- * Functions
   , Function
+  , FunctionDefinition
   -- * Basic Blocks
   , BasicBlock
   , liftFunctionDefinition
@@ -26,6 +27,7 @@ module LLVM.General.Typed
 import LLVM.General.Typed.AnyValue
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.Function
+import LLVM.General.Typed.FunctionDefinition
 import LLVM.General.Typed.Instructions
 import LLVM.General.Typed.Module
 import LLVM.General.Typed.Num ()

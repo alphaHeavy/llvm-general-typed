@@ -88,7 +88,7 @@ splitFunctionTypes = go [] where
 namedFunction_
   :: (FunctionType (ArgumentList ty), KnownNat cconv)
   => String
-  -> FunctionDefinition ()
+  -> FunctionDefinition ty ()
   -> Globals (Function ('CallingConv cconv) ty)
 namedFunction_ n defn = fst <$> namedFunction n defn
 
@@ -96,9 +96,9 @@ namedFunction
   :: forall a cconv ty
    . (FunctionType (ArgumentList ty), KnownNat cconv)
   => String
-  -> FunctionDefinition a
+  -> FunctionDefinition ty a
   -> Globals (Function ('CallingConv cconv) ty, a)
-namedFunction n defn = do
+namedFunction n (FunctionDefinition defn) = do
   case splitFunctionTypes (functionType (Proxy :: Proxy (ArgumentList ty))) of
     Nothing -> fail "Empty function types?"
     Just (argumentTypes, returnType) -> do

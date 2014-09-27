@@ -9,7 +9,10 @@ import Control.Monad.State.Lazy
 import Data.Word
 import qualified LLVM.General.AST as AST
 
-newtype FunctionDefinition a = FunctionDefinition{runFunctionDefinition :: State FunctionDefinitionState a}
+newtype UntypedFunctionDefinition a = UntypedFunctionDefinition{runFunctionDefinition :: State FunctionDefinitionState a}
+  deriving (Functor, Applicative, Monad, MonadFix, MonadState FunctionDefinitionState)
+
+newtype FunctionDefinition ty a = FunctionDefinition (UntypedFunctionDefinition a)
   deriving (Functor, Applicative, Monad, MonadFix, MonadState FunctionDefinitionState)
 
 data FunctionDefinitionState = FunctionDefinitionState

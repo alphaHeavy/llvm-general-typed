@@ -14,8 +14,6 @@ import LLVM.General.PrettyPrint (showPretty)
 import LLVM.General.Typed
 import LLVM.General.Typed.CallingConv
 import LLVM.General.Typed.DefineBasicBlock
-import LLVM.General.Typed.Module
-import LLVM.General.Typed.Instructions
 import LLVM.General.Typed.Num ()
 import LLVM.General.Typed.Value
 
@@ -32,7 +30,7 @@ foo = do
 
       secondBlock <- namedBasicBlock_ (AST.Name "second") $ do
         someLocalPtr <- alloca
-        store True someLocalPtr (99 :: Value 'Constant Int8)
+        store True someLocalPtr $ (99 :: Value 'Constant Int8) + (-99)
         someLocal <- load True someLocalPtr
         x <- val `add` someLocal
         join $ condBr

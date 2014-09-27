@@ -32,7 +32,7 @@ spliceBasicBlock _ _ _ = error "BasicBlocks should not be deleted"
 class DefineBasicBlock f where
   namedBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> f (a, Label)
 
-instance DefineBasicBlock FunctionDefinition where
+instance DefineBasicBlock UntypedFunctionDefinition where
   namedBasicBlock n bb = do
     ~FunctionDefinitionState{functionDefinitionBasicBlocks = originalBlocks} <- get
     ~(newBlock, x) <- runBasicBlock n bb
@@ -41,6 +41,9 @@ instance DefineBasicBlock FunctionDefinition where
     let splicedBlocks = spliceBasicBlock originalBlocks newBlock extraBlocks
     put st{functionDefinitionBasicBlocks = splicedBlocks}
     return (x, Label n)
+
+instance DefineBasicBlock (FunctionDefinition ty) where
+  namedBasicBlock n bb = FunctionDefinition (namedBasicBlock n bb)
 
 instance DefineBasicBlock BasicBlock where
   namedBasicBlock n bb =

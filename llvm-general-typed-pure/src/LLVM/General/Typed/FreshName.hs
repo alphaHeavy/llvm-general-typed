@@ -16,11 +16,14 @@ instance FreshName BasicBlock where
   freshName =
     liftFunctionDefinition freshName
 
-instance FreshName FunctionDefinition where
+instance FreshName UntypedFunctionDefinition where
   freshName = do
     st@FunctionDefinitionState{functionDefinitionFreshId = fresh} <- get
     put $! st{functionDefinitionFreshId = fresh + 1}
     return $ AST.UnName fresh
+
+instance FreshName (FunctionDefinition ty) where
+  freshName = FunctionDefinition freshName
 
 nameInstruction :: AST.Type -> AST.Instruction -> BasicBlock AST.Operand
 nameInstruction ty instr = do
