@@ -3,21 +3,32 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Function
   ( Function
   , createFunction
   , functionCallingConv
   , functionValue
+  , getParameter
+  , tryGetParameter
+  , ParameterType
   ) where
 
+import Control.Monad (guard)
+import Control.Monad.State.Lazy (gets)
 import Data.Proxy
 import Foreign.Ptr (Ptr)
-import GHC.TypeLits (KnownNat)
+import GHC.TypeLits
+import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.CallingConvention as CC
 
 import LLVM.General.Typed.CallingConv
+import LLVM.General.Typed.FunctionDefinition
 import LLVM.General.Typed.Value
+import LLVM.General.Typed.ValueOf
 
 -- |
 -- 'Function's are wrappers around 'Constant' 'Value's tagged with a specific 'CallingConv'
@@ -44,3 +55,22 @@ functionCallingConv
   :: Function cconv a
   -> CC.CallingConvention
 functionCallingConv (Function _ cconv) = cconv
+
+type family ParameterType (xs :: *) (n :: Nat) :: * where
+  ParameterType (x -> y) 0 = x
+  ParameterType (x -> y) n = ParameterType y (n - 1)
+
+getParameter :: (ParameterType ty n ~ a, KnownNat n) => proxy n -> FunctionDefinition ty (Value 'Mutable a)
+getParameter n = do
+  params <- gets functionDefinitionParameters
+  let AST.Parameter ty name _ = params !! fromIntegral (natVal n)
+  return . ValueOperand . return $ AST.LocalReference ty name
+
+tryGetParameter :: forall a ty . ValueOf a => Int -> FunctionDefinition ty (Maybe (Value 'Mutable a))
+tryGetParameter n = do
+  params <- gets functionDefinitionParameters
+  return $ do
+    guard $ n < length params
+    let AST.Parameter ty name _ = params !! n
+    guard $ ty == valueType (Proxy :: Proxy a)
+    return . ValueOperand . return $ AST.LocalReference ty name

@@ -95,7 +95,11 @@ namedFunction n (FunctionDefinition defn) = do
   case splitFunctionTypes (functionType (Proxy :: Proxy (ArgumentList ty))) of
     Nothing -> fail "Empty function types?"
     Just (argumentTypes, returnType) -> do
-      let defnSt = FunctionDefinitionState{functionDefinitionBasicBlocks = [], functionDefinitionFreshId = 0, functionDefinitionParameters = []}
+      let defnSt = FunctionDefinitionState
+            { functionDefinitionBasicBlocks = []
+            , functionDefinitionFreshId = fromIntegral (length argumentTypes)
+            , functionDefinitionParameters = [AST.Parameter ty (AST.UnName i) [] | (ty, i) <- zip argumentTypes [0..]]
+            }
           ~(a, defSt') = runState (runFunctionDefinition defn) defnSt
           name = AST.Name n
           params = functionDefinitionParameters defSt'

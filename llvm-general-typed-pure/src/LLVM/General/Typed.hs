@@ -9,6 +9,8 @@ module LLVM.General.Typed
   -- * Functions
   , Function
   , FunctionDefinition
+  , getParameter
+  , tryGetParameter
   -- * Basic Blocks
   , BasicBlock
   , liftFunctionDefinition
