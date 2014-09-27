@@ -4,7 +4,6 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -28,6 +27,7 @@ import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
 import qualified LLVM.General.AST.Global as Global
 
+import LLVM.General.Typed.ArgumentList
 import LLVM.General.Typed.CallingConv
 import LLVM.General.Typed.Function
 import LLVM.General.Typed.FunctionDefinition
@@ -59,13 +59,6 @@ namedModule n body = do
   st <- get
   put $!  st{moduleName = n, moduleDefinitions = fmap AST.GlobalDefinition defs}
   return a
-
--- |
--- Convert a function type @ a -> b -> c -> ... @ to a type level list @ [a, b, c, ...] @
--- to support instance matching without a sentinel or enabling IncoherentInstances
-type family ArgumentList (args :: *) :: [*] where
-  ArgumentList (a -> b) = a ': ArgumentList b
-  ArgumentList a = '[a]
 
 class FunctionType (a :: [*]) where
   functionType :: proxy a -> [AST.Type]

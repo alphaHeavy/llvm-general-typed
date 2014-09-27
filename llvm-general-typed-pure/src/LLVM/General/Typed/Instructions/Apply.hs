@@ -18,12 +18,9 @@ import Data.Void
 import GHC.Generics
 import qualified LLVM.General.AST as AST
 
+import LLVM.General.Typed.ArgumentList
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.Value
-
-type family ArgumentList (args :: *) :: [*] where
-  ArgumentList (a -> b) = a ': ArgumentList b
-  ArgumentList a = '[a]
 
 class Apply (args :: [*]) (f :: * -> *) where
   type ApplicationResult args f :: *

@@ -51,6 +51,7 @@ library
     LLVM.General.Typed.ValueWrap
 
   other-modules:
+    LLVM.General.Typed.ArgumentList
     LLVM.General.Typed.Instructions.Add
     LLVM.General.Typed.Instructions.Alloca
     LLVM.General.Typed.Instructions.Apply
