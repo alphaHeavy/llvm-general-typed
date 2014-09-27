@@ -25,6 +25,9 @@ foo = do
 
   namedModule "foo" $ do
     -- _x :: Function C Int64 <- namedFunction_ "bar" $ mdo
+    _y :: Function C () <- namedFunction_ "foo" $ do
+      void . basicBlock_ $ ret_
+
     _x :: Function C (Int32 -> Int64) <- namedFunction_ "bar" $ mdo
       p0 <- getParameter (Proxy :: Proxy 0)
 
@@ -32,13 +35,13 @@ foo = do
         br secondBlock
 
       secondBlock <- namedBasicBlock_ (AST.Name "second") $ do
-        p1 <- trunc p0
+        p0trunc <- trunc p0
         someLocalPtr <- alloca
         store True someLocalPtr $ (99 :: Value 'Constant Int8) + (-99)
         someLocal <- load True someLocalPtr
         x <- val `add` someLocal
         join $ condBr
-          <$> cmp someLocal p1
+          <$> cmp someLocal p0trunc
           <*> basicBlock_ (ret <=< ext $ abs x * someLocal + mutable (val - signum 8))
           <*> basicBlock_ (br entryBlock)
 

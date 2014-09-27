@@ -19,7 +19,8 @@ import qualified LLVM.General.AST.AddrSpace as AST
 import LLVM.General.Typed.Value
 
 data Classification
-  = IntegerClass
+  = VoidClass
+  | IntegerClass
   | FloatingPointClass
   | PointerClass Classification
   | VectorClass Classification
@@ -35,6 +36,11 @@ class ValueOf (a :: *) where
   type ElementsOf a = 1
   type ClassificationOf a :: Classification
   valueType :: proxy a -> AST.Type
+
+instance ValueOf (Value const ()) where
+  type WordsOf (Value const ()) = 0
+  type ClassificationOf (Value const ()) = VoidClass
+  valueType _ = AST.VoidType
 
 instance ValueOf (Value const Bool) where
   type WordsOf (Value const Bool) = 1
