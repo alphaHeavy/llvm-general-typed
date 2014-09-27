@@ -37,7 +37,7 @@ import LLVM.General.Typed.ValueOf
 -- 'Function' 'LLVM.General.Typed.CallingConv.C' ('Data.Int.Int64' 'Prelude.->' 'Data.Int.Int32') = 'Value' 'Constant' ('Ptr' ('Data.Int.Int64' 'Prelude.->' 'Data.Int.Int32'))
 -- 'Function' 'LLVM.General.Typed.CallingConv.X86_StdCall' ('Foreign.C.CString.CString' -> 'Data.Int.Int32') = 'Value' 'Constant' ('Ptr' ('Foreign.C.CString.CString' -> 'Data.Int.Int32')) @
 data Function (cconv :: CallingConv) (a :: *) where
-  Function :: KnownNat nat => Value 'Constant (Ptr a) -> CC.CallingConvention -> Function ('CallingConv nat) a
+  Function :: Value 'Constant (Ptr a) -> CC.CallingConvention -> Function ('CallingConv nat) a
 
 createFunction
   :: forall a nat
