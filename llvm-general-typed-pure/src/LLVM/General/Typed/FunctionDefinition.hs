@@ -20,4 +20,3 @@ data FunctionDefinitionState = FunctionDefinitionState
   , functionDefinitionFreshId     :: {-# UNPACK #-} !Word
   , functionDefinitionParameters  :: [AST.Parameter]
   }
-

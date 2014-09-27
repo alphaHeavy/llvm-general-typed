@@ -82,6 +82,7 @@ import qualified LLVM.General.AST.Constant as Constant
 import qualified LLVM.General.AST.FloatingPointPredicate as FloatingPointPredicate
 import qualified LLVM.General.AST.IntegerPredicate as IntegerPredicate
 
+import LLVM.General.Typed.ArgumentList
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.BlockAddress
 import LLVM.General.Typed.FreshName
@@ -111,15 +112,15 @@ import LLVM.General.Typed.VMap
 
 condBr
   :: Value const Bool
-  -> Label
-  -> Label
-  -> BasicBlock (Terminator ())
+  -> Label rty
+  -> Label rty
+  -> BasicBlock (Terminator rty ())
 condBr condition (Label trueDest) (Label falseDest) = do
   conditionOp <- asOp condition
   setTerminator $ AST.CondBr conditionOp trueDest falseDest []
   return $ Terminator ()
 
-br :: Label -> BasicBlock (Terminator ())
+br :: Label rty -> BasicBlock (Terminator rty ())
 br (Label dest) = do
   setTerminator $ AST.Br dest []
   return $ Terminator ()
@@ -127,26 +128,26 @@ br (Label dest) = do
 switch
   :: (ClassificationOf (Value 'Constant a) ~ IntegerClass)
   => Value const a
-  -> Label -- default
-  -> [(Value 'Constant a, Label)]
-  -> BasicBlock (Terminator ())
+  -> Label rty -- default
+  -> [(Value 'Constant a, Label rty)]
+  -> BasicBlock (Terminator rty ())
 switch value (Label defaultDest) dests = do
   valueOp <- asOp value
   let dests' = [(val, dest) | (ValueConstant val, Label dest) <- dests]
   setTerminator $ AST.Switch valueOp defaultDest dests' []
   return $ Terminator ()
 
-blockAddress :: Function cconv a -> Label -> BasicBlock (Value 'Constant BlockAddress)
+blockAddress :: Function cconv ty -> Label (ReturnType ty) -> BasicBlock (Value 'Constant BlockAddress)
 blockAddress = undefined
 
-indirectBr :: Value 'Constant BlockAddress -> [Label] -> BasicBlock (Terminator ())
+indirectBr :: Value 'Constant BlockAddress -> [Label rty] -> BasicBlock (Terminator rty ())
 indirectBr = undefined
 
-resume :: Value const a -> BasicBlock (Terminator ())
+resume :: Value const a -> BasicBlock (Terminator rty ())
 resume = undefined
 
 unreachable
-  :: BasicBlock (Terminator ())
+  :: BasicBlock (Terminator rty ())
 unreachable = do
   setTerminator $ AST.Unreachable []
   return $ Terminator ()

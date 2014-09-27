@@ -14,7 +14,6 @@ module LLVM.General.Typed.Function
   , functionValue
   , getParameter
   , tryGetParameter
-  , ParameterType
   ) where
 
 import Control.Monad (guard)
@@ -25,6 +24,7 @@ import GHC.TypeLits
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.CallingConvention as CC
 
+import LLVM.General.Typed.ArgumentList
 import LLVM.General.Typed.CallingConv
 import LLVM.General.Typed.FunctionDefinition
 import LLVM.General.Typed.Value
@@ -55,10 +55,6 @@ functionCallingConv
   :: Function cconv a
   -> CC.CallingConvention
 functionCallingConv (Function _ cconv) = cconv
-
-type family ParameterType (xs :: *) (n :: Nat) :: * where
-  ParameterType (x -> y) 0 = x
-  ParameterType (x -> y) n = ParameterType y (n - 1)
 
 getParameter :: (ParameterType ty n ~ a, KnownNat n) => proxy n -> FunctionDefinition ty (Value 'Mutable a)
 getParameter n = do

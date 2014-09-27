@@ -14,7 +14,7 @@ import LLVM.General.Typed.ValueOf
 ret
   :: ValueOf (Value const a)
   => Value const a
-  -> BasicBlock (Terminator ())
+  -> BasicBlock (Terminator a ())
 ret value = do
   -- name the value, emitting instructions as necessary
   valueOp <- asOp value
@@ -22,7 +22,7 @@ ret value = do
   -- @TODO: replace with LocalReference ?
   return $ Terminator ()
 
-ret_ :: BasicBlock (Terminator ())
+ret_ :: BasicBlock (Terminator () ())
 ret_ = do
   setTerminator $ AST.Ret Nothing []
   return $ Terminator ()

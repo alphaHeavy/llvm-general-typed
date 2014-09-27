@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module LLVM.General.Typed.BasicBlock where
@@ -27,15 +28,18 @@ setTerminator term = do
   st <- get
   put $! st{basicBlockTerminator = Just (AST.Do term)}
 
-data Label = Label AST.Name
+data Label rty = Label AST.Name
 
-newtype Terminator a = Terminator a deriving (Functor, Show)
+data SomeLabel where
+  SomeLabel :: Label rty -> SomeLabel
 
-instance Applicative Terminator where
+newtype Terminator rty a = Terminator a deriving (Functor, Show)
+
+instance Applicative (Terminator rty) where
   pure = Terminator
   Terminator f <*> x = f <$> x
 
-runBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> UntypedFunctionDefinition (AST.BasicBlock, a)
+runBasicBlock :: AST.Name -> BasicBlock (Terminator rty a) -> UntypedFunctionDefinition (AST.BasicBlock, a)
 runBasicBlock n bb = do
   -- pattern match must be lazy to support the MonadFix instance
   ~(Terminator a, st, instr) <- runRWST (unBasicBlock bb) () (BasicBlockState n Nothing)

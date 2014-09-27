@@ -16,6 +16,7 @@ import Data.Proxy
 import GHC.Generics
 import qualified LLVM.General.AST as AST
 
+import LLVM.General.Typed.ArgumentList
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.Function
 import LLVM.General.Typed.Instructions.Apply
@@ -27,9 +28,9 @@ invoke
    . CanCall ty args
   => Function cconv ty
   -> args
-  -> Label
-  -> Label
-  -> BasicBlock (Terminator (Value 'Mutable (CallResult ty args)))
+  -> Label (ReturnType ty)
+  -> Label (ReturnType ty)
+  -> BasicBlock (Terminator (ReturnType ty) (Value 'Mutable (CallResult ty args)))
 invoke function args (Label returnDest) (Label exceptionDest) = do
   let ValueConstant f = functionValue function
       f' = AST.ConstantOperand f

@@ -1,4 +1,7 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module LLVM.General.Typed.DefineBasicBlock
   ( DefineBasicBlock
@@ -11,11 +14,12 @@ module LLVM.General.Typed.DefineBasicBlock
 import Control.Monad.RWS.Lazy
 import qualified LLVM.General.AST as AST
 
+import LLVM.General.Typed.ArgumentList
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.FreshName
 import LLVM.General.Typed.FunctionDefinition
 
-basicBlock :: (DefineBasicBlock f, FreshName f, Monad f) => BasicBlock (Terminator a) -> f (a, Label)
+basicBlock :: (DefineBasicBlock f rty, FreshName f, Monad f) => BasicBlock (Terminator rty a) -> f (a, Label rty)
 basicBlock bb = do
   n <- freshName
   namedBasicBlock n bb
@@ -29,10 +33,10 @@ spliceBasicBlock [] newBlock extraBlocks = newBlock:extraBlocks
 spliceBasicBlock (x:xs) newBlock (_:ys) = x:spliceBasicBlock xs newBlock ys
 spliceBasicBlock _ _ _ = error "BasicBlocks should not be deleted"
 
-class DefineBasicBlock f where
-  namedBasicBlock :: AST.Name -> BasicBlock (Terminator a) -> f (a, Label)
+class DefineBasicBlock f rty where
+  namedBasicBlock :: AST.Name -> BasicBlock (Terminator rty a) -> f (a, Label rty)
 
-instance DefineBasicBlock UntypedFunctionDefinition where
+instance DefineBasicBlock UntypedFunctionDefinition rty where
   namedBasicBlock n bb = do
     ~FunctionDefinitionState{functionDefinitionBasicBlocks = originalBlocks} <- get
     ~(newBlock, x) <- runBasicBlock n bb
@@ -42,15 +46,15 @@ instance DefineBasicBlock UntypedFunctionDefinition where
     put st{functionDefinitionBasicBlocks = splicedBlocks}
     return (x, Label n)
 
-instance DefineBasicBlock (FunctionDefinition ty) where
+instance ReturnType ty ~ rty => DefineBasicBlock (FunctionDefinition ty) rty where
   namedBasicBlock n bb = FunctionDefinition (namedBasicBlock n bb)
 
-instance DefineBasicBlock BasicBlock where
+instance DefineBasicBlock BasicBlock ty where
   namedBasicBlock n bb =
     liftFunctionDefinition (namedBasicBlock n bb)
 
-basicBlock_ :: (DefineBasicBlock f, FreshName f, Monad f) => BasicBlock (Terminator ()) -> f Label
+basicBlock_ :: (DefineBasicBlock f rty, FreshName f, Monad f) => BasicBlock (Terminator rty ()) -> f (Label rty)
 basicBlock_ = liftM snd . basicBlock
 
-namedBasicBlock_ :: (DefineBasicBlock f, Monad f) => AST.Name -> BasicBlock (Terminator ()) -> f Label
+namedBasicBlock_ :: (DefineBasicBlock f rty, Monad f) => AST.Name -> BasicBlock (Terminator rty ()) -> f (Label rty)
 namedBasicBlock_ n = liftM snd . namedBasicBlock n
