@@ -16,8 +16,8 @@ type family ArgumentList (args :: *) :: [*] where
   ArgumentList a = '[a]
 
 type family ParameterType (xs :: *) (n :: Nat) :: * where
-  ParameterType (x -> y) 0 = x
-  ParameterType (x -> y) n = ParameterType y (n - 1)
+  ParameterType (a -> b) 0 = a
+  ParameterType (a -> b) n = ParameterType b (n - 1)
 
 type family ReturnType (ty :: *) :: * where
   ReturnType (a -> b) = ReturnType b
