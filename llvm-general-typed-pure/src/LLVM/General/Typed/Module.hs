@@ -1,11 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Module
   ( Module
@@ -31,8 +28,8 @@ import LLVM.General.Typed.ArgumentList
 import LLVM.General.Typed.CallingConv
 import LLVM.General.Typed.Function
 import LLVM.General.Typed.FunctionDefinition
+import LLVM.General.Typed.FunctionType
 import LLVM.General.Typed.Value
-import LLVM.General.Typed.ValueOf (ValueOf, valueType)
 
 newtype Module a = Module{runModule :: State ModuleState a}
   deriving (Functor, Applicative, Monad, MonadFix, MonadState ModuleState)
@@ -59,24 +56,6 @@ namedModule n body = do
   st <- get
   put $!  st{moduleName = n, moduleDefinitions = fmap AST.GlobalDefinition defs}
   return a
-
-class FunctionType (a :: [*]) where
-  functionType :: proxy a -> [AST.Type]
-
-instance (ValueOf (Value 'Mutable x), FunctionType xs) => FunctionType (x ': xs) where
-  functionType _ = valueType (Proxy :: Proxy (Value 'Mutable x)) : functionType (Proxy :: Proxy xs)
-
-instance FunctionType '[] where
-  functionType _ = []
-
--- |
--- Convert a type list from Haskell format (argType1 -> argType2 -> returnType)
--- to ([argType1, argType2], returnType), matching the format expected by llvm
-splitFunctionTypes :: [AST.Type] -> Maybe ([AST.Type], AST.Type)
-splitFunctionTypes = go [] where
-  go  _     [] = Nothing
-  go ys    [x] = Just (reverse ys, x)
-  go ys (x:xs) = go (x:ys) xs
 
 namedFunction_
   :: (FunctionType (ArgumentList ty), KnownNat cconv)

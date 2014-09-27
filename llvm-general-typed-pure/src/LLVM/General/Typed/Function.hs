@@ -8,7 +8,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Function
-  ( Function
+  ( Function(..)
   , createFunction
   , functionCallingConv
   , functionValue

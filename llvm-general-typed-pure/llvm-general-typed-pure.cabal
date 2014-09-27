@@ -52,6 +52,7 @@ library
 
   other-modules:
     LLVM.General.Typed.ArgumentList
+    LLVM.General.Typed.FunctionType
     LLVM.General.Typed.Instructions.Add
     LLVM.General.Typed.Instructions.Alloca
     LLVM.General.Typed.Instructions.Apply
