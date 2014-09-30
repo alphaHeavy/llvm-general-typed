@@ -124,6 +124,7 @@ natElementIndex = ConstantElementIndex . (:[]) . Constant.Int 32 . natVal
 valueElementIndex :: Value const a -> BasicBlock ElementIndex
 valueElementIndex (ValueConstant x) = return $ ConstantElementIndex [x]
 valueElementIndex (ValueMutable x)  = valueElementIndex x
+valueElementIndex (ValuePure x)     = return $ MutableElementIndex [x]
 valueElementIndex x@ValueOperand{}  = MutableElementIndex . (:[]) <$> asOp x
 
 -- convienent names for testing

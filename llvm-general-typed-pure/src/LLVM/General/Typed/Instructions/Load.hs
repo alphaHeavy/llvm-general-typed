@@ -25,4 +25,4 @@ load
 load volatile value = do
   value' <- asOp value
   let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
-  ValueOperand . return <$> nameInstruction ty (AST.Load volatile value' Nothing 0 [])
+  ValuePure <$> nameInstruction ty (AST.Load volatile value' Nothing 0 [])

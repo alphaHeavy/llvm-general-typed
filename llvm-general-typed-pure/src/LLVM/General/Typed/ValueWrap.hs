@@ -31,7 +31,7 @@ class OperandWrap const where
 instance OperandWrap Mutable where
   operandWrap :: forall a. ValueOf a => AST.Operand -> Maybe (Value 'Mutable a)
   operandWrap op@(AST.LocalReference ty _)
-    | valueType (Proxy :: Proxy a) == ty = Just (ValueOperand (return op))
+    | valueType (Proxy :: Proxy a) == ty = Just (ValuePure op)
   operandWrap op@AST.ConstantOperand{} = ValueMutable <$> operandWrap op
   operandWrap _ = Nothing
 

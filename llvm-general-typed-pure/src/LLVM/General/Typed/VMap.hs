@@ -24,6 +24,7 @@ vmap1
 vmap1 f _ (ValueConstant x) = ValueConstant (f x)
 vmap1 f g (ValueMutable x)  = weaken (vmap1 f g x)
 vmap1 _ g x@ValueOperand{}  = ValueOperand (join (g <$> asOp x))
+vmap1 _ g (ValuePure x)     = ValueOperand (g x)
 
 vmap1'
   :: (Constant -> Constant)
@@ -44,11 +45,14 @@ vmap2 f g = k where
   j x y = ValueOperand (join (g <$> asOp x <*> asOp y))
   k (ValueConstant x) (ValueConstant y) = ValueConstant (f x y)
   k (ValueMutable x)  (ValueMutable y)  = weaken (vmap2 f g x y)
+  k (ValuePure x)     (ValuePure y)     = ValueOperand (g x y)
   -- prepare to experience many pleasures of the GADT
   k x@ValueOperand{} y = j x y
   k x y@ValueOperand{} = j x y
   k x@ValueMutable{} y = j x y
   k x y@ValueMutable{} = j x y
+  k x@ValuePure{} y    = j x y
+  k x y@ValuePure{}    = j x y
 
 vmap2'
   :: (Constant -> Constant -> Constant)
@@ -71,6 +75,7 @@ vmap3 f g = k where
   j x y z = ValueOperand (join (g <$> asOp x <*> asOp y <*> asOp z))
   k (ValueConstant x) (ValueConstant y) (ValueConstant z) = ValueConstant (f x y z)
   k (ValueMutable x)  (ValueMutable y)  (ValueMutable z)  = weaken (vmap3 f g x y z)
+  k (ValuePure x)     (ValuePure y)     (ValuePure z)     = ValueOperand (g x y z)
   -- prove we're dealing with a mutable result type
   k x@ValueOperand{} y z = j x y z
   k x y@ValueOperand{} z = j x y z
@@ -78,6 +83,9 @@ vmap3 f g = k where
   k x@ValueMutable{} y z = j x y z
   k x y@ValueMutable{} z = j x y z
   k x y z@ValueMutable{} = j x y z
+  k x@ValuePure{} y z    = j x y z
+  k x y@ValuePure{} z    = j x y z
+  k x y z@ValuePure{}    = j x y z
 
 vmap3'
   :: (Constant -> Constant -> Constant -> Constant)

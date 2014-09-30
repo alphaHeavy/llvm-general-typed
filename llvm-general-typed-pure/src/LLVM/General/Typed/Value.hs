@@ -27,6 +27,7 @@ type family Weakest (x :: k) (y :: k) :: k where
 
 data Value (const :: Constness) (a :: *) where
   ValueMutable  :: Value 'Constant a      -> Value 'Mutable a
+  ValuePure     :: AST.Operand            -> Value 'Mutable a
   ValueOperand  :: BasicBlock AST.Operand -> Value 'Mutable a
   ValueConstant :: Constant.Constant      -> Value 'Constant a
 
@@ -72,3 +73,4 @@ asOp
 asOp (ValueConstant x) = return $ AST.ConstantOperand x
 asOp (ValueMutable x) = asOp x
 asOp (ValueOperand x) = x
+asOp (ValuePure x) = return x

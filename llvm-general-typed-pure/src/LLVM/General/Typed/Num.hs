@@ -50,6 +50,7 @@ liftValueExpression f v =
     x@ValueConstant{} -> evalConstantBasicBlock (f x)
     x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
     x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
+    x@ValuePure{}     -> ValueOperand (f x >>= asOp)
 
 signumSigned
   :: forall const a

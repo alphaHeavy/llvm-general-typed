@@ -60,7 +60,7 @@ getParameter :: (ParameterType ty n ~ a, KnownNat n) => proxy n -> FunctionDefin
 getParameter n = do
   params <- gets functionDefinitionParameters
   let AST.Parameter ty name _ = params !! fromIntegral (natVal n)
-  return . ValueOperand . return $ AST.LocalReference ty name
+  return . ValuePure $ AST.LocalReference ty name
 
 tryGetParameter :: forall a ty . ValueOf a => Int -> FunctionDefinition ty (Maybe (Value 'Mutable a))
 tryGetParameter n = do
@@ -69,4 +69,4 @@ tryGetParameter n = do
     guard $ n < length params
     let AST.Parameter ty name _ = params !! n
     guard $ ty == valueType (Proxy :: Proxy a)
-    return . ValueOperand . return $ AST.LocalReference ty name
+    return . ValuePure $ AST.LocalReference ty name

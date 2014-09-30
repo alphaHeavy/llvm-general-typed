@@ -41,22 +41,19 @@ call_
   -> Function cconv ty
   -> args
   -> BasicBlock (Value 'Mutable (CallResult ty args))
-call_ isTailCall function args = do
-  let ValueConstant f = functionValue function
-      f' = AST.ConstantOperand f
-      cconv = functionCallingConv function
+call_ isTailCall (Function (ValueConstant f) cconv) args = do
   args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
   let instr = AST.Call
         { isTailCall = isTailCall
         , callingConvention = cconv
         , returnAttributes = []
-        , function = Right f'
+        , function = Right (AST.ConstantOperand f)
         , arguments = (,[]) <$> args'
         , functionAttributes = []
         , metadata = []
         }
       ty = valueType (Proxy :: Proxy (Value 'Mutable (CallResult ty args)))
-  ValueOperand . return <$> nameInstruction ty instr
+  ValuePure <$> nameInstruction ty instr
 
 call
   :: forall args cconv ty

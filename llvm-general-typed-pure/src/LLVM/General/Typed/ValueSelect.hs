@@ -26,4 +26,5 @@ instance ValueSelect 'Constant 'Mutable where
 
 instance ValueSelect 'Mutable 'Mutable where
   vselect f g (ValueMutable v) = vselect f g v
+  vselect _ g (ValuePure v)    = ValueOperand (g v)
   vselect _ g (ValueOperand v) = ValueOperand (g =<< v)
