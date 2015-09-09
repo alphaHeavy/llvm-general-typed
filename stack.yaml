@@ -1,0 +1,10 @@
+flags: {}
+packages:
+- llvm-general-typed-pure/
+- location:
+    git: https://github.com/bscarlet/llvm-general
+    commit: ca6489fdddde5c956a4032956e28099ff890a80b
+  subdirs:
+    - llvm-general-pure/
+extra-deps: []
+resolver: lts-3.4
