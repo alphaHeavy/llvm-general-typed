@@ -50,6 +50,10 @@ module LLVM.General.Typed.Instructions
   , InBounds(..)
   , getElementPtr
   , getElementPtr0
+  -- **** Utility
+  , GetElementPtrType
+  , Index
+  , InvalidGetElementPtrIndexBoundsStruct
   -- ** Conversion Operations
   , trunc
   , ext

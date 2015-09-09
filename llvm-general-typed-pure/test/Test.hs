@@ -15,9 +15,10 @@ import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
+import LLVM.General.Typed
+import LLVM.General.Typed.CallingConv
 import LLVM.General.Typed.DefineBasicBlock
 import LLVM.General.Typed.Instructions
-import LLVM.General.Typed.Instructions.GetElementPtr
 import LLVM.General.Typed.Module
 import LLVM.General.Typed.Value
 
@@ -59,11 +60,13 @@ getElementPtrTests :: Assertion
 getElementPtrTests = do
   let ast = fst . evalModule $ do
         namedModule "foo" $ do
-          void . namedFunction "bar" $
-            basicBlock $ do
+          _x :: Function C Int32 <- namedFunction_ "bar" $
+            void . basicBlock_ $ do
               structPtr :: Value 'Mutable (Ptr (Struct '[Int32, Ptr Int32])) <- alloca
               memberPtr :: Value 'Mutable (Ptr Int32) <- getElementPtr InBounds structPtr (Proxy :: Proxy '[0, 1, 0])
-              val <- load memberPtr
+              val <- load True memberPtr
               ret val
+
+          return ()
 
   putStrLn $ showPretty ast
