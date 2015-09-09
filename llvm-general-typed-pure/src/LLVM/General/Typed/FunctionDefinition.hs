@@ -2,11 +2,9 @@
 
 module LLVM.General.Typed.FunctionDefinition where
 
-import Control.Applicative
 import Control.Monad.Fix
 import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
-import Data.Word
 import qualified LLVM.General.AST as AST
 
 newtype UntypedFunctionDefinition a = UntypedFunctionDefinition{runFunctionDefinition :: State FunctionDefinitionState a}

@@ -13,7 +13,6 @@ module LLVM.General.Typed.ValueWrap
   , functionWrap
   ) where
 
-import Control.Applicative
 import Control.Monad
 import qualified Data.Foldable as Foldable
 import Data.Typeable
@@ -37,7 +36,7 @@ class OperandWrap const where
 constantWrap :: (OperandWrap const, ValueOf a) => Constant.Constant -> Maybe (Value const a)
 constantWrap = operandWrap . AST.ConstantOperand
 
-instance OperandWrap Mutable where
+instance OperandWrap 'Mutable where
   operandWrap :: forall a. ValueOf a => AST.Operand -> Maybe (Value 'Mutable a)
   operandWrap op@(AST.LocalReference ty _)
     | valueType (Proxy :: Proxy a) == ty = Just (ValuePure op)
@@ -89,7 +88,7 @@ constantMatch rep = go where
     Constant.FCmp _ _ _ -> valueType (Proxy :: Proxy (Value 'Constant Bool)) == rep
     Constant.Select _ lhs rhs -> go lhs && go rhs
 
-instance OperandWrap Constant where
+instance OperandWrap 'Constant where
   operandWrap :: forall a. ValueOf a => AST.Operand -> Maybe (Value 'Constant a)
   operandWrap (AST.ConstantOperand op) = do
     let rep = valueType (Proxy :: Proxy a)

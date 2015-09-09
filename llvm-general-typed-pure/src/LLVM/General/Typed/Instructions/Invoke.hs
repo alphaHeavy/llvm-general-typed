@@ -11,7 +11,6 @@ module LLVM.General.Typed.Instructions.Invoke
   ( invoke
   ) where
 
-import Control.Applicative
 import Data.Proxy
 import GHC.Generics
 import qualified LLVM.General.AST as AST

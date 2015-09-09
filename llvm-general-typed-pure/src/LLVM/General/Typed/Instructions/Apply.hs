@@ -12,7 +12,6 @@ module LLVM.General.Typed.Instructions.Apply
   , ArgumentList
   ) where
 
-import Control.Applicative
 import Data.Proxy
 import Data.Void
 import GHC.Generics

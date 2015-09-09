@@ -7,7 +7,6 @@
 
 module LLVM.General.Typed.Instructions.Phi where
 
-import Control.Applicative
 import Data.Proxy
 import Data.Traversable
 import qualified LLVM.General.AST as AST

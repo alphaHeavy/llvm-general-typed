@@ -33,11 +33,11 @@ class Trunc (classification :: Classification) where
     => Value const a
     -> BasicBlock (Value const b)
 
-instance Trunc IntegerClass where
+instance Trunc 'IntegerClass where
   vtrunc
     :: forall const a b
-     . ( ClassificationOf (Value const a) ~ IntegerClass
-       , ClassificationOf (Value const b) ~ IntegerClass
+     . ( ClassificationOf (Value const a) ~ 'IntegerClass
+       , ClassificationOf (Value const b) ~ 'IntegerClass
        , ValueOf (Value const b)
        , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
     => Value const a
@@ -47,11 +47,11 @@ instance Trunc IntegerClass where
     f v = Constant.Trunc v vt
     g v = nameInstruction vt $ AST.Trunc v vt []
 
-instance Trunc FloatingPointClass where
+instance Trunc 'FloatingPointClass where
   vtrunc
     :: forall const a b
-     . ( ClassificationOf (Value const a) ~ FloatingPointClass
-       , ClassificationOf (Value const b) ~ FloatingPointClass
+     . ( ClassificationOf (Value const a) ~ 'FloatingPointClass
+       , ClassificationOf (Value const b) ~ 'FloatingPointClass
        , ValueOf (Value const b)
        , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
     => Value const a

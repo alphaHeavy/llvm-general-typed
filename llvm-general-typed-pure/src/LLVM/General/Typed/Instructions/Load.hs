@@ -6,7 +6,6 @@ module LLVM.General.Typed.Instructions.Load
   ( load
   ) where
 
-import Control.Applicative
 import Data.Proxy
 import Foreign.Ptr (Ptr)
 import qualified LLVM.General.AST as AST

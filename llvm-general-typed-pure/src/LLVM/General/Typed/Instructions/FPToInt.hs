@@ -23,7 +23,7 @@ import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
 type family CanFPToInt a b :: Constraint
-type instance CanFPToInt (Value const a) (Value const b) = (Bits b, ClassificationOf (Value const a) ~ FloatingPointClass, ClassificationOf (Value const b) ~ IntegerClass)
+type instance CanFPToInt (Value const a) (Value const b) = (Bits b, ClassificationOf (Value const a) ~ 'FloatingPointClass, ClassificationOf (Value const b) ~ 'IntegerClass)
 
 fptoint :: forall a b const . CanFPToInt (Value const a) (Value const b) => ValueOf (Value const b) => Value const a -> BasicBlock (Value const b)
 fptoint = vmap1' f g where

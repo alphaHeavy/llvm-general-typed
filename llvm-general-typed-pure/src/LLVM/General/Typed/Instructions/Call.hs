@@ -15,7 +15,6 @@ module LLVM.General.Typed.Instructions.Call
   , tailcall
   ) where
 
-import Control.Applicative
 import Data.Proxy
 import GHC.Generics
 import GHC.Exts (Constraint)

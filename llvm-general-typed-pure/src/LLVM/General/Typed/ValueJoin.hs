@@ -2,8 +2,6 @@
 
 module LLVM.General.Typed.ValueJoin where
 
-import Control.Applicative
-
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.Value
 

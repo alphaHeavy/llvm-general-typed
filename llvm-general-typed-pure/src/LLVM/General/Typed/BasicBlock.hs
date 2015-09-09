@@ -4,7 +4,6 @@
 
 module LLVM.General.Typed.BasicBlock where
 
-import Control.Applicative
 import Control.Monad.Fix
 import Control.Monad.RWS.Lazy
 import Data.Maybe (fromJust)

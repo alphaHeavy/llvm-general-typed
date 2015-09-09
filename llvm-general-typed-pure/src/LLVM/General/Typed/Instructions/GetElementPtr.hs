@@ -24,7 +24,6 @@ module LLVM.General.Typed.Instructions.GetElementPtr
   , InvalidGetElementPtrIndexBoundsStruct
   ) where
 
-import Control.Applicative
 import Control.Monad.RWS.Lazy
 import Data.Proxy
 import Data.Void
@@ -105,10 +104,10 @@ tryGetElementPtr bounds value index =
 -- |
 -- Calculate the 'Constness' of the 'Value' returned from 'getElementPtr'
 type family GetElementPtrConstness (const :: Constness) (i :: *) :: Constness where
-  GetElementPtrConstness Mutable i = Mutable
-  GetElementPtrConstness Constant (Proxy Nat) = Constant
-  GetElementPtrConstness Constant (Proxy [Nat]) = Constant
-  GetElementPtrConstness Constant (Index i) = GGetElementPtrConstness Constant (Rep i)
+  GetElementPtrConstness 'Mutable i = 'Mutable
+  GetElementPtrConstness 'Constant (Proxy Nat) = 'Constant
+  GetElementPtrConstness 'Constant (Proxy [Nat]) = 'Constant
+  GetElementPtrConstness 'Constant (Index i) = GGetElementPtrConstness 'Constant (Rep i)
 
 -- |
 -- Equivalent to 'GetElementPtrConstness' for '* -> *' kinds.

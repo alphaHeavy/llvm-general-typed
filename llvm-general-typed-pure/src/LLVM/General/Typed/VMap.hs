@@ -6,7 +6,6 @@
 
 module LLVM.General.Typed.VMap where
 
-import Control.Applicative
 import Control.Monad
 
 import LLVM.General.AST (Operand)

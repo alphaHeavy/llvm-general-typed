@@ -25,7 +25,7 @@ import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
 type family CanExtend a b :: Constraint
-type instance CanExtend (Value const a) (Value const b) = (Bits a, ClassificationOf (Value const a) ~ IntegerClass, ClassificationOf (Value const b) ~ IntegerClass)
+type instance CanExtend (Value const a) (Value const b) = (Bits a, ClassificationOf (Value const a) ~ 'IntegerClass, ClassificationOf (Value const b) ~ 'IntegerClass)
 
 ext
   :: forall a b const . (CanExtend (Value const a) (Value const b), BitsOf (Value const a) + 1 <= BitsOf (Value const b))

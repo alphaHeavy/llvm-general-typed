@@ -126,7 +126,7 @@ br (Label dest) = do
   return $ Terminator ()
 
 switch
-  :: (ClassificationOf (Value 'Constant a) ~ IntegerClass)
+  :: (ClassificationOf (Value 'Constant a) ~ 'IntegerClass)
   => Value const a
   -> Label rty -- default
   -> [(Value 'Constant a, Label rty)]
@@ -161,7 +161,7 @@ undef = do
   return $ ValueConstant val
 
 icmp
-  :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ IntegerClass)
+  :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ 'IntegerClass)
   => IntegerPredicate.IntegerPredicate
   -> Value cx a
   -> Value cy a
@@ -172,7 +172,7 @@ icmp p = vmap2' f g where
   g x y = nameInstruction ty $ AST.ICmp p x y []
 
 fcmp
-  :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ FloatingPointClass)
+  :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ 'FloatingPointClass)
   => FloatingPointPredicate.FloatingPointPredicate
   -> Value cx a
   -> Value cy a

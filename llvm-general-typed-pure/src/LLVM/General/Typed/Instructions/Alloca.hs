@@ -7,7 +7,6 @@ module LLVM.General.Typed.Instructions.Alloca
   ( alloca
   ) where
 
-import Control.Applicative
 import Data.Proxy
 import Foreign.Ptr (Ptr)
 import GHC.TypeLits

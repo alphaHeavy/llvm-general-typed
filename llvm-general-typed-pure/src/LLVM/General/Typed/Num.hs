@@ -54,7 +54,7 @@ liftValueExpression f v =
 
 signumSigned
   :: forall const a
-   . NumConstraints (Value const a) IntegerClass
+   . NumConstraints (Value const a) 'IntegerClass
   => Value const a
   -> Value const a
 signumSigned = liftValueExpression $ \ x -> do
@@ -65,7 +65,7 @@ signumSigned = liftValueExpression $ \ x -> do
 
 signumUnsigned
   :: forall const a
-   . NumConstraints (Value const a) IntegerClass
+   . NumConstraints (Value const a) 'IntegerClass
   => Value const a
   -> Value const a
 signumUnsigned = liftValueExpression $ \ x -> do
@@ -74,7 +74,7 @@ signumUnsigned = liftValueExpression $ \ x -> do
 
 signumFloating
   :: forall const a
-   . NumConstraints (Value const a) FloatingPointClass
+   . NumConstraints (Value const a) 'FloatingPointClass
   => Value const a
   -> Value const a
 signumFloating = liftValueExpression $ \ x -> do
@@ -85,7 +85,7 @@ signumFloating = liftValueExpression $ \ x -> do
 
 absSigned
   :: forall const a
-   . NumConstraints (Value const a) IntegerClass
+   . NumConstraints (Value const a) 'IntegerClass
   => Value const a
   -> Value const a
 absSigned = liftValueExpression $ \ x -> do
@@ -94,7 +94,7 @@ absSigned = liftValueExpression $ \ x -> do
 
 absFloating
   :: forall const a
-   . NumConstraints (Value const a) FloatingPointClass
+   . NumConstraints (Value const a) 'FloatingPointClass
   => Value const a
   -> Value const a
 absFloating = liftValueExpression $ \ x -> do
