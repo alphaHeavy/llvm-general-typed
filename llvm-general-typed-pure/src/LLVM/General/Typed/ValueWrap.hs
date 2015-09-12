@@ -1,15 +1,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module LLVM.General.Typed.ValueWrap
   ( operandWrap
-  , constantWrap
   , functionWrap
   ) where
 
@@ -30,17 +29,16 @@ import LLVM.General.Typed.FunctionType
 import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 
-class OperandWrap const where
-  operandWrap :: ValueOf a => AST.Operand -> Maybe (Value const a)
+class OperandWrap op where
+  type OperandConstness op :: Constness
+  operandWrap :: ValueOf a => op -> Maybe (Value (OperandConstness op) a)
 
-constantWrap :: (OperandWrap const, ValueOf a) => Constant.Constant -> Maybe (Value const a)
-constantWrap = operandWrap . AST.ConstantOperand
-
-instance OperandWrap 'Mutable where
+instance OperandWrap AST.Operand where
+  type OperandConstness AST.Operand = 'Mutable
   operandWrap :: forall a. ValueOf a => AST.Operand -> Maybe (Value 'Mutable a)
   operandWrap op@(AST.LocalReference ty _)
     | valueType (Proxy :: Proxy a) == ty = Just (ValuePure op)
-  operandWrap op@AST.ConstantOperand{} = ValueMutable <$> operandWrap op
+  operandWrap (AST.ConstantOperand op) = ValueMutable <$> operandWrap op
   operandWrap _ = Nothing
 
 constantMatch :: AST.Type -> Constant.Constant -> Bool
@@ -87,14 +85,15 @@ constantMatch rep = go where
     Constant.ICmp _ _ _ -> valueType (Proxy :: Proxy (Value 'Constant Bool)) == rep
     Constant.FCmp _ _ _ -> valueType (Proxy :: Proxy (Value 'Constant Bool)) == rep
     Constant.Select _ lhs rhs -> go lhs && go rhs
+    _ -> False
 
-instance OperandWrap 'Constant where
-  operandWrap :: forall a. ValueOf a => AST.Operand -> Maybe (Value 'Constant a)
-  operandWrap (AST.ConstantOperand op) = do
+instance OperandWrap Constant.Constant where
+  type OperandConstness Constant.Constant = 'Constant
+  operandWrap :: forall a. ValueOf a => Constant.Constant -> Maybe (Value 'Constant a)
+  operandWrap op = do
     let rep = valueType (Proxy :: Proxy a)
     guard $ constantMatch rep op
     return $ ValueConstant op
-  operandWrap _ = Nothing
 
 functionWrap :: forall a cc . (KnownNat cc, FunctionType (ArgumentList a)) => AST.Global -> Maybe (Function ('CallingConv cc) a)
 functionWrap AST.Function{..} = do
