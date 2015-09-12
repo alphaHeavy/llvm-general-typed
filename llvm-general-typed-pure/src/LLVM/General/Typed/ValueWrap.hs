@@ -47,44 +47,44 @@ constantMatch rep = go where
     Constant.Int n _ | AST.IntegerType n' <- rep, n == n' -> True
     Constant.Float (Float.Single _) | AST.FloatingPointType 4 Type.IEEE <- rep -> True
     Constant.Float (Float.Double _) | AST.FloatingPointType 8 Type.IEEE <- rep -> True
-    Constant.Null typ -> typ == rep
+    Constant.Null    typ -> typ == rep
     Constant.Array typ _ -> typ == rep
     Constant.Vector typs -> Foldable.all go typs
-    Constant.Undef typ -> typ == rep
+    Constant.Undef   typ -> typ == rep
     Constant.GlobalReference typ _ -> typ == rep
-    Constant.Add _ _ lhs rhs -> go lhs && go rhs
-    Constant.FAdd lhs rhs -> go lhs && go rhs
-    Constant.Sub _ _ lhs rhs -> go lhs && go rhs
-    Constant.FSub lhs rhs -> go lhs && go rhs
-    Constant.Mul _ _ lhs rhs -> go lhs && go rhs
-    Constant.FMul lhs rhs -> go lhs && go rhs
-    Constant.UDiv _ lhs rhs -> go lhs && go rhs
-    Constant.SDiv _ lhs rhs -> go lhs && go rhs
-    Constant.FDiv lhs rhs -> go lhs && go rhs
-    Constant.URem lhs rhs -> go lhs && go rhs
-    Constant.SRem lhs rhs -> go lhs && go rhs
-    Constant.FRem lhs rhs -> go lhs && go rhs
-    Constant.Shl _ _ lhs rhs -> go lhs && go rhs
-    Constant.LShr _ lhs rhs -> go lhs && go rhs
-    Constant.AShr _ lhs rhs -> go lhs && go rhs
-    Constant.And lhs rhs -> go lhs && go rhs
-    Constant.Or lhs rhs -> go lhs && go rhs
-    Constant.Xor lhs rhs -> go lhs && go rhs
-    Constant.Trunc _ typ -> typ == rep
-    Constant.ZExt _ typ -> typ == rep
-    Constant.SExt _ typ -> typ == rep
-    Constant.FPToUI _ typ -> typ == rep
-    Constant.FPToSI _ typ -> typ == rep
-    Constant.UIToFP _ typ -> typ == rep
-    Constant.SIToFP _ typ -> typ == rep
-    Constant.FPTrunc _ typ -> typ == rep
-    Constant.FPExt _ typ -> typ == rep
+    Constant.Add  _ _ lhs rhs -> go lhs && go rhs
+    Constant.FAdd     lhs rhs -> go lhs && go rhs
+    Constant.Sub  _ _ lhs rhs -> go lhs && go rhs
+    Constant.FSub     lhs rhs -> go lhs && go rhs
+    Constant.Mul  _ _ lhs rhs -> go lhs && go rhs
+    Constant.FMul     lhs rhs -> go lhs && go rhs
+    Constant.UDiv   _ lhs rhs -> go lhs && go rhs
+    Constant.SDiv   _ lhs rhs -> go lhs && go rhs
+    Constant.FDiv     lhs rhs -> go lhs && go rhs
+    Constant.URem     lhs rhs -> go lhs && go rhs
+    Constant.SRem     lhs rhs -> go lhs && go rhs
+    Constant.FRem     lhs rhs -> go lhs && go rhs
+    Constant.Shl  _ _ lhs rhs -> go lhs && go rhs
+    Constant.LShr   _ lhs rhs -> go lhs && go rhs
+    Constant.AShr   _ lhs rhs -> go lhs && go rhs
+    Constant.And      lhs rhs -> go lhs && go rhs
+    Constant.Or       lhs rhs -> go lhs && go rhs
+    Constant.Xor      lhs rhs -> go lhs && go rhs
+    Constant.Select _ lhs rhs -> go lhs && go rhs
+    Constant.Trunc    _ typ -> typ == rep
+    Constant.ZExt     _ typ -> typ == rep
+    Constant.SExt     _ typ -> typ == rep
+    Constant.FPToUI   _ typ -> typ == rep
+    Constant.FPToSI   _ typ -> typ == rep
+    Constant.UIToFP   _ typ -> typ == rep
+    Constant.SIToFP   _ typ -> typ == rep
+    Constant.FPTrunc  _ typ -> typ == rep
+    Constant.FPExt    _ typ -> typ == rep
     Constant.PtrToInt _ typ -> typ == rep
     Constant.IntToPtr _ typ -> typ == rep
     Constant.BitCast _ typ -> typ == rep
-    Constant.ICmp _ _ _ -> valueType (Proxy :: Proxy (Value 'Constant Bool)) == rep
-    Constant.FCmp _ _ _ -> valueType (Proxy :: Proxy (Value 'Constant Bool)) == rep
-    Constant.Select _ lhs rhs -> go lhs && go rhs
+    Constant.ICmp{} -> valueType (Proxy :: Proxy (Value 'Constant Bool)) == rep
+    Constant.FCmp{} -> valueType (Proxy :: Proxy (Value 'Constant Bool)) == rep
     _ -> False
 
 instance OperandWrap Constant.Constant where
