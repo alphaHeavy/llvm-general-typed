@@ -14,7 +14,6 @@ module LLVM.General.Typed.Module
   , namedFunction_
   ) where
 
-import Control.Applicative
 import Control.Monad.Fix
 import Control.Monad.RWS.Lazy
 import Control.Monad.State.Lazy
