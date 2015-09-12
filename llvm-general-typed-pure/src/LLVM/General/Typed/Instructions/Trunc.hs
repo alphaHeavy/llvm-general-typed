@@ -26,46 +26,45 @@ import LLVM.General.Typed.VMap
 
 class Trunc (classification :: Classification) where
   vtrunc
-    :: ( ClassificationOf (Value const a) ~ classification
-       , ClassificationOf (Value const b) ~ classification
-       , ValueOf (Value const b)
-       , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
+    :: ( ClassificationOf a ~ classification
+       , ClassificationOf b ~ classification
+       , ValueOf b
+       , BitsOf b + 1 <= BitsOf a)
     => Value const a
     -> BasicBlock (Value const b)
 
 instance Trunc 'IntegerClass where
   vtrunc
     :: forall const a b
-     . ( ClassificationOf (Value const a) ~ 'IntegerClass
-       , ClassificationOf (Value const b) ~ 'IntegerClass
-       , ValueOf (Value const b)
-       , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
+     . ( ClassificationOf a ~ 'IntegerClass
+       , ClassificationOf b ~ 'IntegerClass
+       , ValueOf b
+       , BitsOf b + 1 <= BitsOf a)
     => Value const a
     -> BasicBlock (Value const b)
   vtrunc = vmap1' f g where
-    vt = valueType (Proxy :: Proxy (Value const b))
+    vt = valueType (Proxy :: Proxy b)
     f v = Constant.Trunc v vt
     g v = nameInstruction vt $ AST.Trunc v vt []
 
 instance Trunc 'FloatingPointClass where
   vtrunc
     :: forall const a b
-     . ( ClassificationOf (Value const a) ~ 'FloatingPointClass
-       , ClassificationOf (Value const b) ~ 'FloatingPointClass
-       , ValueOf (Value const b)
-       , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
+     . ( ClassificationOf a ~ 'FloatingPointClass
+       , ClassificationOf b ~ 'FloatingPointClass
+       , ValueOf b
+       , BitsOf b + 1 <= BitsOf a)
     => Value const a
     -> BasicBlock (Value const b)
   vtrunc = vmap1' f g where
-    vt = valueType (Proxy :: Proxy (Value const b))
+    vt = valueType (Proxy :: Proxy b)
     f v = Constant.FPTrunc v vt
     g v = nameInstruction vt $ AST.FPTrunc v vt []
 
 type CanTrunc a b = (ClassificationOf a ~ ClassificationOf b, Trunc (ClassificationOf b), ValueOf b)
 
 trunc
-  :: ( CanTrunc (Value const a) (Value const b)
-     , BitsOf (Value const b) + 1 <= BitsOf (Value const a))
+  :: (CanTrunc a b, BitsOf b + 1 <= BitsOf a)
   => Value const a
   -> BasicBlock (Value const b)
 trunc = vtrunc

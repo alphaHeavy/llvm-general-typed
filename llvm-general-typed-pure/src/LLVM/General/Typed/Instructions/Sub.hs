@@ -27,29 +27,29 @@ import LLVM.General.Typed.VMap
 
 isub
   :: forall a cx cy
-   . ValueOf (Value (cx `Weakest` cy) a)
+   . ValueOf a
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 isub = vmap2 f g where
   f = Constant.Sub False False
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.Sub False False x y []
 
 fsub
   :: forall a cx cy
-   . ValueOf (Value (cx `Weakest` cy) a)
+   . ValueOf a
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 fsub = vmap2 f g where
   f = Constant.FSub
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.FSub AST.NoFastMathFlags x y []
 
 class Sub (classification :: Classification) where
   vsub
-    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, ValueOf (Value (cx `Weakest` cy) a))
+    :: (ClassificationOf a ~ classification, ValueOf a)
     => Value cx a
     -> Value cy a
     -> Value (cx `Weakest` cy) a
@@ -67,10 +67,10 @@ instance Sub ('VectorClass 'FloatingPointClass) where
   vsub = fsub
 
 type family CanSub (a :: *) (b :: *) :: Constraint
-type instance CanSub (Value cx a) (Value cy a) = (Sub (ClassificationOf (Value (cx `Weakest` cy) a)), ValueOf (Value (cx `Weakest` cy) a))
+type instance CanSub a a = (Sub (ClassificationOf a), ValueOf a)
 
 sub
-  :: CanSub (Value cx a) (Value cy a)
+  :: CanSub a a
   => Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx `Weakest` cy) a)

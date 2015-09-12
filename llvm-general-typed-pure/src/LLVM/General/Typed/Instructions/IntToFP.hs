@@ -23,12 +23,12 @@ import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
 type family CanIntToFP a b :: Constraint
-type instance CanIntToFP (Value const a) (Value const b) = (Bits a, ClassificationOf (Value const a) ~ 'IntegerClass, ClassificationOf (Value const b) ~ 'FloatingPointClass)
+type instance CanIntToFP a b = (Bits a, ClassificationOf a ~ 'IntegerClass, ClassificationOf b ~ 'FloatingPointClass)
 
-inttofp :: forall a b const . CanIntToFP (Value const a) (Value const b) => ValueOf (Value const b) => Value const a -> BasicBlock (Value const b)
+inttofp :: forall a b const . CanIntToFP a b => ValueOf b => Value const a -> BasicBlock (Value const b)
 inttofp = vmap1' f g where
   si = isSigned (undefined :: a)
   (cf, gf) = if si then (Constant.SIToFP, AST.SIToFP) else (Constant.UIToFP, AST.UIToFP)
-  vt = valueType (Proxy :: Proxy (Value const b))
+  vt = valueType (Proxy :: Proxy b)
   f v = cf v vt
   g v = nameInstruction vt $ gf v vt []

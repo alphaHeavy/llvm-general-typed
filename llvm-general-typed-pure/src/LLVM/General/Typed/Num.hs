@@ -35,9 +35,9 @@ import LLVM.General.Typed.VMap
 
 type family NumConstraints (value :: *) (classOf :: Classification) :: Constraint
 type instance NumConstraints (Value const a) classOf =
-  ( KnownNat (BitsOf (Value const a))
-  , ValueOf (Value const a)
-  , ClassificationOf (Value const a) ~ classOf
+  ( KnownNat (BitsOf a)
+  , ValueOf a
+  , ClassificationOf a ~ classOf
   , Weakest const const ~ const
   , Num (Value const a))
 
@@ -102,96 +102,96 @@ absFloating = liftValueExpression $ \ x -> do
   select gt (0 - x) x
 
 fromIntegerConst
-  :: forall a const . (KnownNat (BitsOf (Value const a)), InjectConstant const)
+  :: forall a const . (KnownNat (BitsOf a), FromConstant const)
   => Integer
   -> Value const a
-fromIntegerConst = injectConstant . Constant.Int bits where
-  bits = fromIntegral $ natVal (Proxy :: Proxy (BitsOf (Value const a)))
+fromIntegerConst = fromConstant . Constant.Int bits where
+  bits = fromIntegral $ natVal (Proxy :: Proxy (BitsOf a))
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Float) where
-  fromInteger = injectConstant . Constant.Float . Float.Single . fromIntegral
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Float) where
+  fromInteger = fromConstant . Constant.Float . Float.Single . fromIntegral
   abs = absFloating
-  (+) = vmap2 Constant.FAdd (nameInstruction2 (valueType (Proxy :: Proxy (Value const Float))) (AST.FAdd AST.NoFastMathFlags))
-  (-) = vmap2 Constant.FSub (nameInstruction2 (valueType (Proxy :: Proxy (Value const Float))) (AST.FSub AST.NoFastMathFlags))
-  (*) = vmap2 Constant.FMul (nameInstruction2 (valueType (Proxy :: Proxy (Value const Float))) (AST.FMul AST.NoFastMathFlags))
+  (+) = vmap2 Constant.FAdd (nameInstruction2 (valueType (Proxy :: Proxy Float)) (AST.FAdd AST.NoFastMathFlags))
+  (-) = vmap2 Constant.FSub (nameInstruction2 (valueType (Proxy :: Proxy Float)) (AST.FSub AST.NoFastMathFlags))
+  (*) = vmap2 Constant.FMul (nameInstruction2 (valueType (Proxy :: Proxy Float)) (AST.FMul AST.NoFastMathFlags))
   signum = signumFloating
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Double) where
-  fromInteger = injectConstant . Constant.Float . Float.Double . fromIntegral
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Double) where
+  fromInteger = fromConstant . Constant.Float . Float.Double . fromIntegral
   abs = absFloating
-  (+) = vmap2 Constant.FAdd (nameInstruction2 (valueType (Proxy :: Proxy (Value const Double))) (AST.FAdd AST.NoFastMathFlags))
-  (-) = vmap2 Constant.FSub (nameInstruction2 (valueType (Proxy :: Proxy (Value const Double))) (AST.FSub AST.NoFastMathFlags))
-  (*) = vmap2 Constant.FMul (nameInstruction2 (valueType (Proxy :: Proxy (Value const Double))) (AST.FMul AST.NoFastMathFlags))
+  (+) = vmap2 Constant.FAdd (nameInstruction2 (valueType (Proxy :: Proxy Double)) (AST.FAdd AST.NoFastMathFlags))
+  (-) = vmap2 Constant.FSub (nameInstruction2 (valueType (Proxy :: Proxy Double)) (AST.FSub AST.NoFastMathFlags))
+  (*) = vmap2 Constant.FMul (nameInstruction2 (valueType (Proxy :: Proxy Double)) (AST.FMul AST.NoFastMathFlags))
   signum = signumFloating
 
-instance (InjectConstant const, Weakest const const ~ const, Num (Value const Float)) => Fractional (Value const Float) where
-  fromRational = injectConstant . Constant.Float . Float.Single . fromRational
-  (/) = vmap2 Constant.FDiv (nameInstruction2 (valueType (Proxy :: Proxy (Value const Float))) (AST.FDiv AST.NoFastMathFlags))
+instance (FromConstant const, Weakest const const ~ const, Num (Value const Float)) => Fractional (Value const Float) where
+  fromRational = fromConstant . Constant.Float . Float.Single . fromRational
+  (/) = vmap2 Constant.FDiv (nameInstruction2 (valueType (Proxy :: Proxy Float)) (AST.FDiv AST.NoFastMathFlags))
 
-instance (InjectConstant const, Weakest const const ~ const, Num (Value const Double)) => Fractional (Value const Double) where
-  fromRational = injectConstant . Constant.Float . Float.Double . fromRational
-  (/) = vmap2 Constant.FDiv (nameInstruction2 (valueType (Proxy :: Proxy (Value const Double))) (AST.FDiv AST.NoFastMathFlags))
+instance (FromConstant const, Weakest const const ~ const, Num (Value const Double)) => Fractional (Value const Double) where
+  fromRational = fromConstant . Constant.Float . Float.Double . fromRational
+  (/) = vmap2 Constant.FDiv (nameInstruction2 (valueType (Proxy :: Proxy Double)) (AST.FDiv AST.NoFastMathFlags))
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int8) where
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Int8) where
   fromInteger = fromIntegerConst
   abs = absSigned
-  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int8))) (AST.Add False False))
-  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int8))) (AST.Sub False False))
-  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int8))) (AST.Mul False False))
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy Int8)) (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy Int8)) (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy Int8)) (AST.Mul False False))
   signum = signumSigned
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int16) where
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Int16) where
   fromInteger = fromIntegerConst
   abs = absSigned
-  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int16))) (AST.Add False False))
-  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int16))) (AST.Sub False False))
-  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int16))) (AST.Mul False False))
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy Int16)) (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy Int16)) (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy Int16)) (AST.Mul False False))
   signum = signumSigned
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int32) where
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Int32) where
   fromInteger = fromIntegerConst
   abs = absSigned
-  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int32))) (AST.Add False False))
-  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int32))) (AST.Sub False False))
-  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int32))) (AST.Mul False False))
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy Int32)) (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy Int32)) (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy Int32)) (AST.Mul False False))
   signum = signumSigned
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Int64) where
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Int64) where
   fromInteger = fromIntegerConst
   abs = absSigned
-  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int64))) (AST.Add False False))
-  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int64))) (AST.Sub False False))
-  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Int64))) (AST.Mul False False))
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy Int64)) (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy Int64)) (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy Int64)) (AST.Mul False False))
   signum = signumSigned
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Word8) where
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Word8) where
   fromInteger = fromIntegerConst
   abs = id
-  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word8))) (AST.Add False False))
-  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word8))) (AST.Sub False False))
-  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word8))) (AST.Mul False False))
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy Word8)) (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy Word8)) (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy Word8)) (AST.Mul False False))
   signum = signumUnsigned
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Word16) where
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Word16) where
   fromInteger = fromIntegerConst
   abs = id
-  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word16))) (AST.Add False False))
-  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word16))) (AST.Sub False False))
-  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word16))) (AST.Mul False False))
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy Word16)) (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy Word16)) (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy Word16)) (AST.Mul False False))
   signum = signumUnsigned
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Word32) where
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Word32) where
   fromInteger = fromIntegerConst
   abs = id
-  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word32))) (AST.Add False False))
-  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word32))) (AST.Sub False False))
-  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word32))) (AST.Mul False False))
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy Word32)) (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy Word32)) (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy Word32)) (AST.Mul False False))
   signum = signumUnsigned
 
-instance (InjectConstant const, Weakest const const ~ const) => Num (Value const Word64) where
+instance (FromConstant const, Weakest const const ~ const) => Num (Value const Word64) where
   fromInteger = fromIntegerConst
   abs = id
-  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word64))) (AST.Add False False))
-  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word64))) (AST.Sub False False))
-  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy (Value const Word64))) (AST.Mul False False))
+  (+) = vmap2 (Constant.Add False False) (nameInstruction2 (valueType (Proxy :: Proxy Word64)) (AST.Add False False))
+  (-) = vmap2 (Constant.Sub False False) (nameInstruction2 (valueType (Proxy :: Proxy Word64)) (AST.Sub False False))
+  (*) = vmap2 (Constant.Mul False False) (nameInstruction2 (valueType (Proxy :: Proxy Word64)) (AST.Mul False False))
   signum = signumUnsigned

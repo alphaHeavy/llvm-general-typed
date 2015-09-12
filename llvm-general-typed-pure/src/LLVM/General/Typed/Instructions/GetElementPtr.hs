@@ -66,7 +66,7 @@ class GetElementIndex a i where
 -- an instance of 'Typeable'. Use this function with care.
 unsafeGetElementPtr
   :: forall a b const i
-   . (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i), ValueOf (Value (GetElementPtrConstness const i) b))
+   . (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i), ValueOf b)
   => InBounds
   -> Value const a
   -> i
@@ -74,7 +74,7 @@ unsafeGetElementPtr
 unsafeGetElementPtr bounds value index = do
   elementIdx <- getElementIndex (Proxy :: Proxy a) index
   let inbounds = case bounds of InBounds -> True; OutOfBounds -> False
-      ty = valueType (Proxy :: Proxy (Value (GetElementPtrConstness const i) b))
+      ty = valueType (Proxy :: Proxy b)
   case elementIdx of
     OperandElementIndex idx -> vjoin (vselect f g value) where
       f _ = error "This should be unreachable, GEP on a mutable value is mutable"
@@ -93,7 +93,7 @@ data GetElementPtrTest a
 -- Note: this is currently not implemented and always returns
 -- 'GetElementPtrTypeUnknown' even when the types match.
 tryGetElementPtr
-  :: (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i), ValueOf (Value (GetElementPtrConstness const i) b))
+  :: (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i), ValueOf b)
   => InBounds
   -> Value const a
   -> i
@@ -223,7 +223,7 @@ instance (Generic idx, GGetElementIndex a (Rep idx)) => GetElementIndex a (Index
 -- @
 getElementPtr
   :: forall a const index
-   . (GetElementIndex (Ptr a) index, ValueSelect const (GetElementPtrConstness const index), ValueOf (Value (GetElementPtrConstness const index) (GetElementPtrType (Ptr a) index)))
+   . (GetElementIndex (Ptr a) index, ValueSelect const (GetElementPtrConstness const index), ValueOf (GetElementPtrType (Ptr a) index))
   => InBounds
   -> Value const (Ptr a)
   -> index
@@ -234,7 +234,7 @@ type Index0 index = Index (Proxy 0, index)
 
 getElementPtr0
   :: forall a const index
-   . (GetElementIndex a index, ValueSelect const (GetElementPtrConstness const (Index0 index)), (ValueOf (Value (GetElementPtrConstness const (Index0 index)) (GetElementPtrType a index))))
+   . (GetElementIndex a index, ValueSelect const (GetElementPtrConstness const (Index0 index)), (ValueOf (GetElementPtrType a index)))
   => InBounds
   -> Value const (Ptr a)
   -> index

@@ -27,29 +27,29 @@ import LLVM.General.Typed.VMap
 
 imul
   :: forall a cx cy
-   . ValueOf (Value (cx `Weakest` cy) a)
+   . ValueOf a
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 imul = vmap2 f g where
   f = Constant.Mul False False
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.Mul False False x y []
 
 fmul
   :: forall a cx cy
-   . ValueOf (Value (cx `Weakest` cy) a)
+   . ValueOf a
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 fmul = vmap2 f g where
   f = Constant.FMul
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.FMul AST.NoFastMathFlags x y []
 
 class Mul (classification :: Classification) where
   vmul
-    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, ValueOf (Value (cx `Weakest` cy) a))
+    :: (ClassificationOf a ~ classification, ValueOf a)
     => Value cx a
     -> Value cy a
     -> Value (cx `Weakest` cy) a
@@ -67,10 +67,10 @@ instance Mul ('VectorClass 'FloatingPointClass) where
   vmul = fmul
 
 type family CanMul (a :: *) (b :: *) :: Constraint
-type instance CanMul (Value cx a) (Value cy a) = (Mul (ClassificationOf (Value (cx `Weakest` cy) a)), ValueOf (Value (cx `Weakest` cy) a))
+type instance CanMul a a = (Mul (ClassificationOf a), ValueOf a)
 
 mul
-  :: CanMul (Value cx a) (Value cy a)
+  :: CanMul a a
   => Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx `Weakest` cy) a)

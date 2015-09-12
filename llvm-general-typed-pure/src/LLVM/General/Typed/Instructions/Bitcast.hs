@@ -19,11 +19,11 @@ import LLVM.General.Typed.VMap
 
 bitcast
   :: forall a b const .
-     ( BitsOf (Value const a) ~ BitsOf (Value const b)
-     , ValueOf (Value const b))
+     ( BitsOf a ~ BitsOf b
+     , ValueOf b)
   => Value const a
   -> BasicBlock (Value const b)
 bitcast = vmap1' f g where
-  vt = valueType (Proxy :: Proxy (Value const b))
+  vt = valueType (Proxy :: Proxy b)
   f v = Constant.BitCast v vt
   g v = nameInstruction vt $ AST.BitCast v vt []

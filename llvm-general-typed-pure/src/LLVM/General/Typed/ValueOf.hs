@@ -22,6 +22,8 @@ import Foreign.Ptr (Ptr)
 import GHC.TypeLits
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.AddrSpace as AST
+import qualified LLVM.General.AST.Constant as Constant
+import qualified LLVM.General.AST.Float as Float
 
 import LLVM.General.Typed.Value
 
@@ -53,98 +55,99 @@ class ValueOf (a :: *) where
   -- | Coarse grained classification of this type, useful for restricting
   -- what operands can be passed to certain instructions.
   type ClassificationOf a :: Classification
+
   valueType :: proxy a -> AST.Type
 
-instance ValueOf (Value const ()) where
-  type BytesOf (Value const ()) = 0
-  type ClassificationOf (Value const ()) = 'VoidClass
+
+instance ValueOf () where
+  type BytesOf () = 0
+  type ClassificationOf () = 'VoidClass
   valueType _ = AST.VoidType
 
-instance ValueOf (Value const Bool) where
-  type BytesOf (Value const Bool) = 1
-  type ClassificationOf (Value const Bool) = 'IntegerClass
+instance ValueOf Bool where
+  type BytesOf Bool = 1
+  type ClassificationOf Bool = 'IntegerClass
   valueType _ = AST.IntegerType 8
 
-instance ValueOf (Value const Int8) where
-  type BytesOf (Value const Int8) = 1
-  type ClassificationOf (Value const Int8) = 'IntegerClass
+instance ValueOf Int8 where
+  type BytesOf Int8 = 1
+  type ClassificationOf Int8 = 'IntegerClass
   valueType _ = AST.IntegerType 8
 
-instance ValueOf (Value const Int16) where
-  type BytesOf (Value const Int16) = 2
-  type ClassificationOf (Value const Int16) = 'IntegerClass
+instance ValueOf Int16 where
+  type BytesOf Int16 = 2
+  type ClassificationOf Int16 = 'IntegerClass
   valueType _ = AST.IntegerType 16
 
-instance ValueOf (Value const Int32) where
-  type BytesOf (Value const Int32) = 4
-  type ClassificationOf (Value const Int32) = 'IntegerClass
+instance ValueOf Int32 where
+  type BytesOf Int32 = 4
+  type ClassificationOf Int32 = 'IntegerClass
   valueType _ = AST.IntegerType 32
 
-instance ValueOf (Value const Int64) where
-  type BytesOf (Value const Int64) = 8
-  type ClassificationOf (Value const Int64) = 'IntegerClass
+instance ValueOf Int64 where
+  type BytesOf Int64 = 8
+  type ClassificationOf Int64 = 'IntegerClass
   valueType _ = AST.IntegerType 64
 
-instance ValueOf (Value const Word8) where
-  type BytesOf (Value const Word8) = 1
-  type ClassificationOf (Value const Word8) = 'IntegerClass
+instance ValueOf Word8 where
+  type BytesOf Word8 = 1
+  type ClassificationOf Word8 = 'IntegerClass
   valueType _ = AST.IntegerType 8
 
-instance ValueOf (Value const Word16) where
-  type BytesOf (Value const Word16) = 2
-  type ClassificationOf (Value const Word16) = 'IntegerClass
+instance ValueOf Word16 where
+  type BytesOf Word16 = 2
+  type ClassificationOf Word16 = 'IntegerClass
   valueType _ = AST.IntegerType 16
 
-instance ValueOf (Value const Word32) where
-  type BytesOf (Value const Word32) = 4
-  type ClassificationOf (Value const Word32) = 'IntegerClass
+instance ValueOf Word32 where
+  type BytesOf Word32 = 4
+  type ClassificationOf Word32 = 'IntegerClass
   valueType _ = AST.IntegerType 32
 
-instance ValueOf (Value const Word64) where
-  type BytesOf (Value const Word64) = 8
-  type ClassificationOf (Value const Word64) = 'IntegerClass
+instance ValueOf Word64 where
+  type BytesOf Word64 = 8
+  type ClassificationOf Word64 = 'IntegerClass
   valueType _ = AST.IntegerType 64
 
-instance ValueOf (Value const Float) where
-  type BytesOf (Value const Float) = 4
-  type ClassificationOf (Value const Float) = 'FloatingPointClass
+instance ValueOf Float where
+  type BytesOf Float = 4
+  type ClassificationOf Float = 'FloatingPointClass
   valueType _ = AST.FloatingPointType 32 AST.IEEE
 
-instance ValueOf (Value const Double) where
-  type BytesOf (Value const Double) = 8
-  type ClassificationOf (Value const Double) = 'FloatingPointClass
+instance ValueOf Double where
+  type BytesOf Double = 8
+  type ClassificationOf Double = 'FloatingPointClass
   valueType _ = AST.FloatingPointType 64 AST.IEEE
 
-instance ValueOf (Value const a) => ValueOf (Value const (Ptr a)) where
-  type BytesOf (Value const (Ptr a)) = SIZEOF_HSWORD
-  type ClassificationOf (Value const (Ptr a)) = 'PointerClass (ClassificationOf (Value const a))
-  valueType _ = AST.PointerType (valueType (Proxy :: Proxy (Value const a))) (AST.AddrSpace 0)
+instance ValueOf a => ValueOf (Ptr a) where
+  type BytesOf (Ptr a) = SIZEOF_HSWORD
+  type ClassificationOf (Ptr a) = 'PointerClass (ClassificationOf a)
+  valueType _ = AST.PointerType (valueType (Proxy :: Proxy a)) (AST.AddrSpace 0)
 
-instance (ValueOf (Value const a), KnownNat n) => ValueOf (Value const (Array n a)) where
-  type BytesOf (Value const (Array n a)) = BytesOf (Value const a) * n
-  type ElementsOf (Value const (Array n a)) = n
-  type ClassificationOf (Value const (Array n a)) = 'VectorClass (ClassificationOf (Value const a))
-  valueType _ = AST.VectorType (fromInteger (natVal (Proxy :: Proxy n))) (valueType (Proxy :: Proxy (Value const a)))
+instance (ValueOf a, KnownNat n) => ValueOf (Array n a) where
+  type BytesOf (Array n a) = BytesOf a * n
+  type ElementsOf (Array n a) = n
+  type ClassificationOf (Array n a) = 'VectorClass (ClassificationOf a)
+  valueType _ = AST.VectorType (fromInteger (natVal (Proxy :: Proxy n))) (valueType (Proxy :: Proxy a))
 
 -- |
 -- Internal class used to extract the fields of a structure as LLVM types
 class FieldTypes a where
   fieldTypes :: proxy a -> [AST.Type]
 
-instance (ValueOf (Value const x), FieldTypes (Value const (Struct xs))) => FieldTypes (Value const (Struct (x ': xs))) where
-  fieldTypes _ = valueType (Proxy :: Proxy (Value const x)) : fieldTypes (Proxy :: Proxy (Value const (Struct xs)))
+instance (ValueOf x, FieldTypes (Struct xs)) => FieldTypes (Struct (x ': xs)) where
+  fieldTypes _ = valueType (Proxy :: Proxy x) : fieldTypes (Proxy :: Proxy (Struct xs))
 
-instance FieldTypes (Value const (Struct '[])) where
+instance FieldTypes (Struct '[]) where
   fieldTypes _ = []
 
-instance ValueOf (Value const (Struct '[])) where
-  type BytesOf (Value const (Struct '[])) = 0
-  type ClassificationOf (Value const (Struct '[])) = 'StructureClass
+instance ValueOf (Struct '[]) where
+  type BytesOf (Struct '[]) = 0
+  type ClassificationOf (Struct '[]) = 'StructureClass
   valueType _ = AST.StructureType False []
 
-instance (ValueOf (Value const x), ValueOf (Value const (Struct xs)), FieldTypes (Value const (Struct (x ': xs)))) =>
-  ValueOf (Value const (Struct (x ': xs))) where
+instance (ValueOf x, ValueOf (Struct xs), FieldTypes (Struct (x ': xs))) => ValueOf (Struct (x ': xs)) where
   -- TODO: deal with padding
-  type BytesOf (Value const (Struct (x ': xs))) = BytesOf (Value const x) + BytesOf (Value const (Struct xs))
-  type ClassificationOf (Value const (Struct (x ': xs))) = 'StructureClass
-  valueType _ = AST.StructureType False (fieldTypes (Proxy :: Proxy (Value const (Struct (x ': xs)))))
+  type BytesOf (Struct (x ': xs)) = BytesOf x + BytesOf (Struct xs)
+  type ClassificationOf (Struct (x ': xs)) = 'StructureClass
+  valueType _ = AST.StructureType False (fieldTypes (Proxy :: Proxy (Struct (x ': xs))))

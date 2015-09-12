@@ -54,14 +54,14 @@ instance Weaken 'Constant where
 instance Weaken 'Operand where
   weaken = id
 
-class InjectConstant (const :: Constness) where
-  injectConstant :: Constant.Constant -> Value const a
+class FromConstant (const :: Constness) where
+  fromConstant :: Constant.Constant -> Value const a
 
-instance InjectConstant 'Operand where
-  injectConstant = ValueWeakened . injectConstant
+instance FromConstant 'Operand where
+  fromConstant = ValueWeakened . fromConstant
 
-instance InjectConstant 'Constant where
-  injectConstant = ValueConstant
+instance FromConstant 'Constant where
+  fromConstant = ValueConstant
 
 evalConstantBasicBlock
   :: BasicBlock (Value 'Constant a)

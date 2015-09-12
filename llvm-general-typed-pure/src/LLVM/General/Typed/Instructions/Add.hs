@@ -27,29 +27,29 @@ import LLVM.General.Typed.VMap
 
 iadd
   :: forall a cx cy
-   . ValueOf (Value (cx `Weakest` cy) a)
+   . ValueOf a
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 iadd = vmap2 f g where
   f = Constant.Add False False
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.Add False False x y []
 
 fadd
   :: forall a cx cy
-   . ValueOf (Value (cx `Weakest` cy) a)
+   . ValueOf a
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 fadd = vmap2 f g where
   f = Constant.FAdd
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.FAdd AST.NoFastMathFlags x y []
 
 class Add (classification :: Classification) where
   vadd
-    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, ValueOf (Value (cx `Weakest` cy) a))
+    :: (ClassificationOf a ~ classification, ValueOf a)
     => Value cx a
     -> Value cy a
     -> Value (cx `Weakest` cy) a
@@ -67,10 +67,10 @@ instance Add ('VectorClass 'FloatingPointClass) where
   vadd = fadd
 
 type family CanAdd (a :: *) (b :: *) :: Constraint
-type instance CanAdd (Value cx a) (Value cy a) = (Add (ClassificationOf (Value (cx `Weakest` cy) a)), ValueOf (Value (cx `Weakest` cy) a))
+type instance CanAdd a a = (Add (ClassificationOf a), ValueOf a)
 
 add
-  :: CanAdd (Value cx a) (Value cy a)
+  :: CanAdd a a
   => Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx `Weakest` cy) a)

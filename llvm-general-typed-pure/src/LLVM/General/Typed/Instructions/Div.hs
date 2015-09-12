@@ -29,7 +29,7 @@ import LLVM.General.Typed.VMap
 
 idiv
   :: forall cx cy a
-   . (Bits a, ValueOf (Value (cx `Weakest` cy) a))
+   . (Bits a, ValueOf a)
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
@@ -37,18 +37,18 @@ idiv = vmap2 f g where
   si = isSigned (undefined :: a)
   (cf, gf) = if si then (Constant.SDiv, AST.SDiv) else (Constant.UDiv, AST.UDiv)
   f = cf False
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ gf False x y []
 
 fdiv
   :: forall cx cy a
-   . ValueOf (Value (cx `Weakest` cy) a)
+   . ValueOf a
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 fdiv = vmap2 f g where
   f = Constant.FDiv
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.FDiv AST.NoFastMathFlags x y []
 
 class Div (classification :: Classification) where
@@ -56,7 +56,7 @@ class Div (classification :: Classification) where
   type DivConstraint classification a :: Constraint
   type DivConstraint classification a = ()
   vdiv
-    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, DivConstraint classification a, ValueOf (Value (cx `Weakest` cy) a))
+    :: (ClassificationOf a ~ classification, DivConstraint classification a, ValueOf a)
     => Value cx a
     -> Value cy a
     -> Value (cx `Weakest` cy) a
@@ -76,10 +76,10 @@ instance Div ('VectorClass 'FloatingPointClass) where
   vdiv = fdiv
 
 type family CanDiv (a :: *) (b :: *) :: Constraint
-type instance CanDiv (Value cx a) (Value cy a) = (Div (ClassificationOf (Value (cx `Weakest` cy) a)), DivConstraint (ClassificationOf (Value (cx `Weakest` cy) a)) a, ValueOf (Value (cx `Weakest` cy) a))
+type instance CanDiv a a = (Div (ClassificationOf a), DivConstraint (ClassificationOf a) a, ValueOf a)
 
 div
-  :: CanDiv (Value cx a) (Value cy a)
+  :: CanDiv a a
   => Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx `Weakest` cy) a)

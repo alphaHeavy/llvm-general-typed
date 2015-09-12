@@ -130,7 +130,7 @@ br (Label dest) = do
   return $ Terminator ()
 
 switch
-  :: (ClassificationOf (Value 'Constant a) ~ 'IntegerClass)
+  :: (ClassificationOf a ~ 'IntegerClass)
   => Value const a
   -> Label rty -- default
   -> [(Value 'Constant a, Label rty)]
@@ -158,37 +158,37 @@ unreachable = do
 
 undef
   :: forall a .
-     ValueOf (Value 'Constant a)
+     ValueOf a
   => BasicBlock (Value 'Constant a)
 undef = do
-  let val = Constant.Undef $ valueType (Proxy :: Proxy (Value 'Constant a))
+  let val = Constant.Undef $ valueType (Proxy :: Proxy a)
   return $ ValueConstant val
 
 icmp
-  :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ 'IntegerClass)
+  :: ClassificationOf a ~ 'IntegerClass
   => IntegerPredicate.IntegerPredicate
   -> Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx `Weakest` cy) Bool)
 icmp p = vmap2' f g where
   f = Constant.ICmp p
-  ty = valueType (Proxy :: Proxy (Value const Bool))
+  ty = valueType (Proxy :: Proxy Bool)
   g x y = nameInstruction ty $ AST.ICmp p x y []
 
 fcmp
-  :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ 'FloatingPointClass)
+  :: ClassificationOf a ~ 'FloatingPointClass
   => FloatingPointPredicate.FloatingPointPredicate
   -> Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx `Weakest` cy) Bool)
 fcmp p = vmap2' f g where
   f = Constant.FCmp p
-  ty = valueType (Proxy :: Proxy (Value const Bool))
+  ty = valueType (Proxy :: Proxy Bool)
   g x y = nameInstruction ty $ AST.FCmp p x y []
 
 class Cmp (classification :: Classification) where
   cmp
-    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification)
+    :: (ClassificationOf a ~ classification)
     => Value cx a
     -> Value cy a
     -> BasicBlock (Value (cx `Weakest` cy) Bool)
@@ -196,13 +196,13 @@ class Cmp (classification :: Classification) where
 instance Cmp 'IntegerClass where
   cmp = vmap2' f g where
     f = Constant.ICmp IntegerPredicate.EQ
-    ty = valueType (Proxy :: Proxy (Value const Bool))
+    ty = valueType (Proxy :: Proxy Bool)
     g x y = nameInstruction ty $ AST.ICmp IntegerPredicate.EQ x y []
 
 instance Cmp 'FloatingPointClass where
   cmp = vmap2' f g where
     f = Constant.FCmp FloatingPointPredicate.OEQ
-    ty = valueType (Proxy :: Proxy (Value const Bool))
+    ty = valueType (Proxy :: Proxy Bool)
     g x y = nameInstruction ty $ AST.FCmp FloatingPointPredicate.OEQ x y []
 
 fence :: AST.Atomicity -> BasicBlock ()

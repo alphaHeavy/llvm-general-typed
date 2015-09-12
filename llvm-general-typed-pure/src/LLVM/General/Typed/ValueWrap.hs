@@ -82,9 +82,9 @@ constantMatch rep = go where
     Constant.FPExt    _ typ -> typ == rep
     Constant.PtrToInt _ typ -> typ == rep
     Constant.IntToPtr _ typ -> typ == rep
-    Constant.BitCast _ typ -> typ == rep
-    Constant.ICmp{} -> valueType (Proxy :: Proxy (Value 'Constant Bool)) == rep
-    Constant.FCmp{} -> valueType (Proxy :: Proxy (Value 'Constant Bool)) == rep
+    Constant.BitCast  _ typ -> typ == rep
+    Constant.ICmp{} -> valueType (Proxy :: Proxy Bool) == rep
+    Constant.FCmp{} -> valueType (Proxy :: Proxy Bool) == rep
     _ -> False
 
 instance OperandWrap Constant.Constant where

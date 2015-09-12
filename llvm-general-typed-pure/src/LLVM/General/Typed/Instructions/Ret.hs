@@ -12,7 +12,7 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 
 ret
-  :: ValueOf (Value const a)
+  :: ValueOf a
   => Value const a
   -> BasicBlock (Terminator a ())
 ret value = do

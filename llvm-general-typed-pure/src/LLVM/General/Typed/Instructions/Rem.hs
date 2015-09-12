@@ -29,25 +29,25 @@ import LLVM.General.Typed.VMap
 
 irem
   :: forall a cy cx
-   . (Bits a, ValueOf (Value (cx `Weakest` cy) a))
+   . (Bits a, ValueOf a)
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 irem = vmap2 f g where
   si = isSigned (undefined :: a)
   (f, gf) = if si then (Constant.SRem, AST.SRem) else (Constant.URem, AST.URem)
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ gf x y []
 
 frem
   :: forall a cy cx
-   . ValueOf (Value (cx `Weakest` cy) a)
+   . ValueOf a
   => Value cx a
   -> Value cy a
   -> Value (cx `Weakest` cy) a
 frem = vmap2 f g where
   f = Constant.FRem
-  ty = valueType (Proxy :: Proxy (Value (cx `Weakest` cy) a))
+  ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.FRem AST.NoFastMathFlags x y []
 
 class Rem (classification :: Classification) where
@@ -55,7 +55,7 @@ class Rem (classification :: Classification) where
   type RemConstraint classification a :: Constraint
   type RemConstraint classification a = ()
   vrem
-    :: (ClassificationOf (Value (cx `Weakest` cy) a) ~ classification, RemConstraint classification a, ValueOf (Value (cx `Weakest` cy) a))
+    :: (ClassificationOf a ~ classification, RemConstraint classification a, ValueOf a)
     => Value cx a
     -> Value cy a
     -> Value (cx `Weakest` cy) a
@@ -75,10 +75,10 @@ instance Rem 'FloatingPointClass where
   vrem = frem
 
 type family CanRem (a :: *) (b :: *) :: Constraint
-type instance CanRem (Value cx a) (Value cy a) = (Rem (ClassificationOf (Value (cx `Weakest` cy) a)), RemConstraint (ClassificationOf (Value (cx `Weakest` cy) a)) a, ValueOf (Value (cx `Weakest` cy) a))
+type instance CanRem a a = (Rem (ClassificationOf a), RemConstraint (ClassificationOf a) a, ValueOf a)
 
 rem
-  :: CanRem (Value cx a) (Value cy a)
+  :: CanRem a a
   => Value cx a
   -> Value cy a
   -> BasicBlock (Value (cx `Weakest` cy) a)

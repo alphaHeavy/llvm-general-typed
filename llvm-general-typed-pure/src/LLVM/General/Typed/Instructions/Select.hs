@@ -22,12 +22,12 @@ import LLVM.General.Typed.VMap
 -- just wrap the condition with 'mutable'
 select
   :: forall a cc ct cf
-   . ValueOf (Value (cc `Weakest` ct `Weakest` cf) a)
+   . ValueOf a
   => Value cc Bool
   -> Value ct a
   -> Value cf a
   -> BasicBlock (Value (cc `Weakest` ct `Weakest` cf) a)
 select = vmap3' f g where
   f = Constant.Select
-  ty = valueType (Proxy :: Proxy (Value (cc `Weakest` ct `Weakest` cf) a))
+  ty = valueType (Proxy :: Proxy a)
   g c t f' = nameInstruction ty $ AST.Select c t f' []
