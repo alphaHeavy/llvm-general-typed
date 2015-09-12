@@ -40,7 +40,7 @@ getElementPtrTypeEquality = () where
   _ = Refl :: GetElementPtrType (Array 100 Int64) (Proxy '[100]) :~: Int64
   _ = Refl :: GetElementPtrType (Array 100 Int64) (Proxy '[112]) :~: Int64
 
-  _ = Refl :: GetElementPtrType (Array 100 (Array 100 Int64)) (Index (Value 'Mutable Int32, Value 'Mutable Int32)) :~: Int64
+  _ = Refl :: GetElementPtrType (Array 100 (Array 100 Int64)) (Index (Value 'Operand Int32, Value 'Operand Int32)) :~: Int64
 
 main :: IO ()
 main = defaultMain tests
@@ -62,8 +62,8 @@ getElementPtrTests = do
         namedModule "foo" $ do
           _x :: Function C Int32 <- namedFunction_ "bar" $
             void . basicBlock_ $ do
-              structPtr :: Value 'Mutable (Ptr (Struct '[Int32, Ptr Int32])) <- alloca
-              memberPtr :: Value 'Mutable (Ptr Int32) <- getElementPtr InBounds structPtr (Proxy :: Proxy '[0, 1, 0])
+              structPtr :: Value 'Operand (Ptr (Struct '[Int32, Ptr Int32])) <- alloca
+              memberPtr :: Value 'Operand (Ptr Int32) <- getElementPtr InBounds structPtr (Proxy :: Proxy '[0, 1, 0])
               val <- load True memberPtr
               ret val
 
