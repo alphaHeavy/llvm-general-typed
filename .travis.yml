@@ -1,28 +1,70 @@
-env:
- - GHCVER=7.10.1
-
+# This file has been generated -- see https://github.com/phadej/travis-meta-yaml
+sudo: false
+language: c
 before_install:
- - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
- - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER alex-3.1.4 happy-1.19.3
- - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:/opt/alex/3.1.4/bin:/opt/happy/1.19.3/bin:$PATH
-
+- export PATH=/opt/ghc/$GHCVER/bin:$PATH
+- if [ -n "$CABALVER" ]; then export PATH=/opt/cabal/$CABALVER/bin:$PATH; fi
+- export PATH=~/.local/bin:$PATH
+- if [ ! -e ~/.local/bin/stack ]; then mkdir -p ~/.local/bin; travis_retry curl -L
+  https://github.com/commercialhaskell/stack/releases/download/v0.1.4.0/stack-0.1.4.0-x86_64-linux.tar.gz
+  | tar xz -C ~/.local/bin; fi
+- echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo
+  '?')]"
+- stack +RTS -N2 -RTS --version
 install:
- - cabal update
- - cabal install --only-dependencies --enable-tests --enable-benchmarks
-
+- if [ "$STACK_SOLVER" = "YES" ]; then rm -f stack.yaml; stack update; stack init
+  --solver; fi; stack --no-terminal --skip-ghc-check list-dependencies|sort > installplan.txt;
+  cat installplan.txt; stack --no-terminal --skip-ghc-check setup; if diff -u $HOME/.stack-work-cache/installplan.txt
+  installplan.txt; then echo "cabal build-cache HIT"; rm -rf .stack-work; cp -a $HOME/.stack-work-cache
+  .stack-work; rm -f .stack-work/installplan.txt; else echo "cabal build-cache MISS";
+  rm -rf $HOME/.stack-work-cache; stack --no-terminal --skip-ghc-check build --test
+  --only-dependencies; fi; if [ ! -d $HOME/.stack-work-cache ]; then echo "snapshotting
+  package-db to build-cache"; cp -a .stack-work $HOME/.stack-work-cache; cp -a installplan.txt
+  $HOME/.stack-work-cache/installplan.txt; fi;
 script:
- - cabal configure --enable-tests --enable-benchmarks -v2
- - cabal build
- - cabal test
- - cabal check
- - cabal sdist
-
- - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
-   cd dist/;
-   if [ -f "$SRC_TGZ" ]; then
-      cabal install "$SRC_TGZ";
-   else
-      echo "expected '$SRC_TGZ' not found";
-      exit 1;
-   fi
+- stack --no-terminal --skip-ghc-check build --test
+- stack --no-terminal --skip-ghc-check sdist
+matrix:
+  fast_finish: true
+  include:
+  - env: GHCVER=7.8.4 CABALVER=1.18 STACK_SOLVER=YES
+    addons:
+      apt:
+        sources:
+        - hvr-ghc
+        packages:
+        - ghc-7.8.4
+        - cabal-install-1.18
+        - libgmp-dev
+    compiler: ! ': # ghc-7.8.4  YES'
+  - env: GHCVER=7.10.2 CABALVER=1.22 STACK_SOLVER=YES
+    addons:
+      apt:
+        sources:
+        - hvr-ghc
+        packages:
+        - ghc-7.10.2
+        - cabal-install-1.22
+        - libgmp-dev
+    compiler: ! ': # ghc-7.10.2  YES'
+  - env: GHCVER=head CABALVER=1.22 STACK_SOLVER=YES
+    addons:
+      apt:
+        sources:
+        - hvr-ghc
+        packages:
+        - ghc-head
+        - cabal-install-1.22
+        - libgmp-dev
+    compiler: ! ': # ghc-head  YES'
+  allow_failures:
+  - env: GHCVER=head CABALVER=1.22 STACK_SOLVER=YES
+branches:
+  only:
+  - master
+cache:
+  directories:
+  - ~/.stack
+  - ~/.local
+  - ~/.stack-work-cache
+  apt: true
