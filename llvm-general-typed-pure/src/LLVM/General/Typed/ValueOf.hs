@@ -9,7 +9,11 @@
 
 #include "MachDeps.h"
 
-module LLVM.General.Typed.ValueOf where
+module LLVM.General.Typed.ValueOf
+  ( Classification(..)
+  , ValueOf(..)
+  , FieldTypes
+  ) where
 
 import Data.Int
 import Data.Proxy
@@ -31,12 +35,23 @@ data Classification
   | LabelClass
   | MetadataClass
 
+-- |
+-- The bridge from Haskell types to LLVM types
 class ValueOf (a :: *) where
+  -- | The size of this type rounded up to the nearest byte
   type BytesOf a :: Nat
+
+  -- | The size of this type in bits
   type BitsOf a :: Nat
   type BitsOf a = BytesOf a * 8
+
+  -- | Number of elements represented by this type. This value only
+  -- is useful for arrays, other types should use the default of 1.
   type ElementsOf a :: Nat
   type ElementsOf a = 1
+
+  -- | Coarse grained classification of this type, useful for restricting
+  -- what operands can be passed to certain instructions.
   type ClassificationOf a :: Classification
   valueType :: proxy a -> AST.Type
 
@@ -105,23 +120,31 @@ instance ValueOf (Value const a) => ValueOf (Value const (Ptr a)) where
   type ClassificationOf (Value const (Ptr a)) = 'PointerClass (ClassificationOf (Value const a))
   valueType _ = AST.PointerType (valueType (Proxy :: Proxy (Value const a))) (AST.AddrSpace 0)
 
-class StructureTypes a where
-  structureTypes :: proxy a -> [AST.Type]
+instance (ValueOf (Value const a), KnownNat n) => ValueOf (Value const (Array n a)) where
+  type BytesOf (Value const (Array n a)) = BytesOf (Value const a) * n
+  type ElementsOf (Value const (Array n a)) = n
+  type ClassificationOf (Value const (Array n a)) = 'VectorClass (ClassificationOf (Value const a))
+  valueType _ = AST.VectorType (fromInteger (natVal (Proxy :: Proxy n))) (valueType (Proxy :: Proxy (Value const a)))
 
-instance (ValueOf (Value const x), StructureTypes (Value const (Struct xs))) => StructureTypes (Value const (Struct (x ': xs))) where
-  structureTypes _ = valueType (Proxy :: Proxy (Value const x)) : structureTypes (Proxy :: Proxy (Value const (Struct xs)))
+-- |
+-- Internal class used to extract the fields of a structure as LLVM types
+class FieldTypes a where
+  fieldTypes :: proxy a -> [AST.Type]
 
-instance StructureTypes (Value const (Struct '[])) where
-  structureTypes _ = []
+instance (ValueOf (Value const x), FieldTypes (Value const (Struct xs))) => FieldTypes (Value const (Struct (x ': xs))) where
+  fieldTypes _ = valueType (Proxy :: Proxy (Value const x)) : fieldTypes (Proxy :: Proxy (Value const (Struct xs)))
+
+instance FieldTypes (Value const (Struct '[])) where
+  fieldTypes _ = []
 
 instance ValueOf (Value const (Struct '[])) where
   type BytesOf (Value const (Struct '[])) = 0
   type ClassificationOf (Value const (Struct '[])) = 'StructureClass
   valueType _ = AST.StructureType False []
 
-instance (ValueOf (Value const x), ValueOf (Value const (Struct xs)), StructureTypes (Value const (Struct (x ': xs)))) =>
+instance (ValueOf (Value const x), ValueOf (Value const (Struct xs)), FieldTypes (Value const (Struct (x ': xs)))) =>
   ValueOf (Value const (Struct (x ': xs))) where
   -- TODO: deal with padding
   type BytesOf (Value const (Struct (x ': xs))) = BytesOf (Value const x) + BytesOf (Value const (Struct xs))
   type ClassificationOf (Value const (Struct (x ': xs))) = 'StructureClass
-  valueType _ = AST.StructureType False (structureTypes (Proxy :: Proxy (Value const (Struct (x ': xs)))))
+  valueType _ = AST.StructureType False (fieldTypes (Proxy :: Proxy (Value const (Struct (x ': xs)))))
