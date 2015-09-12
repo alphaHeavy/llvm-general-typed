@@ -48,7 +48,7 @@ liftValueExpression
 liftValueExpression f v =
   case v of
     x@ValueConstant{} -> evalConstantBasicBlock (f x)
-    x@ValueMutable{}  -> ValueOperand (f x >>= asOp)
+    x@ValueWeakened{} -> ValueOperand (f x >>= asOp)
     x@ValueOperand{}  -> ValueOperand (f x >>= asOp)
     x@ValuePure{}     -> ValueOperand (f x >>= asOp)
 

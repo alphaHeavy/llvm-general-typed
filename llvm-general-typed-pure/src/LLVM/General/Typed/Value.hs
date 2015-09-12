@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -19,41 +18,47 @@ import qualified LLVM.General.AST.Constant as Constant
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.FunctionDefinition
 
-data Constness = Constant | Mutable
+-- |
+-- The Constness kind is used to tag values as being constants or operands
+data Constness = Constant | Operand
 
-type family Weakest (x :: k) (y :: k) :: k where
+type family Weakest (x :: Constness) (y :: Constness) :: Constness where
   Weakest 'Constant 'Constant = 'Constant
-  Weakest x         y         = 'Mutable
+  Weakest x         y         = 'Operand
 
+-- |
+-- A Haskell representation of an LLVM type
 data Value (const :: Constness) (a :: *) where
-  ValueMutable  :: Value 'Constant a      -> Value 'Mutable a
-  ValuePure     :: AST.Operand            -> Value 'Mutable a
-  ValueOperand  :: BasicBlock AST.Operand -> Value 'Mutable a
-  ValueConstant :: Constant.Constant      -> Value 'Constant a
+  ValueConstant :: Constant.Constant      -> Value 'Constant a -- A constant value
+  ValueOperand  :: BasicBlock AST.Operand -> Value 'Operand a -- An unevaluated operand within a BasicBlock
+  ValuePure     :: AST.Operand            -> Value 'Operand a -- A concrete operand
+  ValueWeakened :: Value 'Constant a      -> Value 'Operand a -- A constant value in disguise
 
+-- |
+-- A struct is comprised of a type level list of field value types
 data Struct (xs :: [*]) = Struct deriving Typeable
-data Array (n :: Nat) (a :: *) = Array deriving Typeable
 
-mutable :: Value 'Constant a -> Value 'Mutable a
-mutable = ValueMutable
+-- |
+-- Arrays are of a fixed length and known type
+data Array (n :: Nat) (a :: *) = Array deriving Typeable
 
 constant :: Value 'Constant a -> Value 'Constant a
 constant = id
 
 class Weaken (const :: Constness) where
-  weaken :: Value const a -> Value 'Mutable a
+  weaken :: Value const a -> Value 'Operand a
 
 instance Weaken 'Constant where
-  weaken = mutable
+  weaken = ValueWeakened
 
-instance Weaken 'Mutable where
+instance Weaken 'Operand where
   weaken = id
 
 class InjectConstant (const :: Constness) where
   injectConstant :: Constant.Constant -> Value const a
 
-instance InjectConstant 'Mutable where
-  injectConstant = ValueMutable . injectConstant
+instance InjectConstant 'Operand where
+  injectConstant = ValueWeakened . injectConstant
 
 instance InjectConstant 'Constant where
   injectConstant = ValueConstant
@@ -71,6 +76,6 @@ asOp
   :: Value const a
   -> BasicBlock AST.Operand
 asOp (ValueConstant x) = return $ AST.ConstantOperand x
-asOp (ValueMutable x) = asOp x
+asOp (ValueWeakened x) = asOp x
 asOp (ValueOperand x) = x
 asOp (ValuePure x) = return x

@@ -47,14 +47,14 @@ data InBounds
 
 data ElementIndex
   = ConstantElementIndex [Constant.Constant]
-  | MutableElementIndex [AST.Operand]
+  | OperandElementIndex [AST.Operand]
 
 instance Monoid ElementIndex where
   mempty = ConstantElementIndex []
   ConstantElementIndex xs `mappend` ConstantElementIndex ys = ConstantElementIndex $ xs <> ys
-  ConstantElementIndex xs `mappend` MutableElementIndex ys  = MutableElementIndex $ fmap AST.ConstantOperand xs <> ys
-  MutableElementIndex xs  `mappend` ConstantElementIndex ys = MutableElementIndex $ xs <> fmap AST.ConstantOperand ys
-  MutableElementIndex xs  `mappend` MutableElementIndex ys  = MutableElementIndex $ xs <> ys
+  ConstantElementIndex xs `mappend` OperandElementIndex ys  = OperandElementIndex $ fmap AST.ConstantOperand xs <> ys
+  OperandElementIndex xs  `mappend` ConstantElementIndex ys = OperandElementIndex $ xs <> fmap AST.ConstantOperand ys
+  OperandElementIndex xs  `mappend` OperandElementIndex ys  = OperandElementIndex $ xs <> ys
 
 class GetElementIndex a i where
   type GetElementPtrType a i :: *
@@ -76,7 +76,7 @@ unsafeGetElementPtr bounds value index = do
   let inbounds = case bounds of InBounds -> True; OutOfBounds -> False
       ty = valueType (Proxy :: Proxy (Value (GetElementPtrConstness const i) b))
   case elementIdx of
-    MutableElementIndex idx -> vjoin (vselect f g value) where
+    OperandElementIndex idx -> vjoin (vselect f g value) where
       f _ = error "This should be unreachable, GEP on a mutable value is mutable"
       g x = nameInstruction ty $ AST.GetElementPtr inbounds x idx []
     ConstantElementIndex idx -> vjoin (vselect f g value) where
@@ -104,7 +104,7 @@ tryGetElementPtr bounds value index =
 -- |
 -- Calculate the 'Constness' of the 'Value' returned from 'getElementPtr'
 type family GetElementPtrConstness (const :: Constness) (i :: *) :: Constness where
-  GetElementPtrConstness 'Mutable i = 'Mutable
+  GetElementPtrConstness 'Operand i = 'Operand
   GetElementPtrConstness 'Constant (Proxy Nat) = 'Constant
   GetElementPtrConstness 'Constant (Proxy [Nat]) = 'Constant
   GetElementPtrConstness 'Constant (Index i) = GGetElementPtrConstness 'Constant (Rep i)
@@ -122,9 +122,9 @@ natElementIndex = ConstantElementIndex . (:[]) . Constant.Int 32 . natVal
 
 valueElementIndex :: Value const a -> BasicBlock ElementIndex
 valueElementIndex (ValueConstant x) = return $ ConstantElementIndex [x]
-valueElementIndex (ValueMutable x)  = valueElementIndex x
-valueElementIndex (ValuePure x)     = return $ MutableElementIndex [x]
-valueElementIndex x@ValueOperand{}  = MutableElementIndex . (:[]) <$> asOp x
+valueElementIndex (ValueWeakened x) = valueElementIndex x
+valueElementIndex (ValuePure x)     = return $ OperandElementIndex [x]
+valueElementIndex x@ValueOperand{}  = OperandElementIndex . (:[]) <$> asOp x
 
 -- convienent names for testing
 type InvalidGetElementPtrIndexBoundsPtr = Proxy "Attempting to index through a pointer"

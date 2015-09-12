@@ -28,7 +28,7 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 
 type family CanCall ty args :: Constraint
-type instance CanCall ty args = (Generic args, Apply (ArgumentList ty) (Rep args), ValueOf (Value 'Mutable (CallResult ty args)))
+type instance CanCall ty args = (Generic args, Apply (ArgumentList ty) (Rep args), ValueOf (Value 'Operand (CallResult ty args)))
 
 type family CallResult ty args :: *
 type instance CallResult ty args = ApplicationResult (ArgumentList ty) (Rep args)
@@ -39,7 +39,7 @@ call_
   => Bool
   -> Function cconv ty
   -> args
-  -> BasicBlock (Value 'Mutable (CallResult ty args))
+  -> BasicBlock (Value 'Operand (CallResult ty args))
 call_ isTailCall (Function (ValueConstant f) cconv) args = do
   args' <- apply (Proxy :: Proxy (ArgumentList ty)) (from args)
   let instr = AST.Call
@@ -51,7 +51,7 @@ call_ isTailCall (Function (ValueConstant f) cconv) args = do
         , functionAttributes = []
         , metadata = []
         }
-      ty = valueType (Proxy :: Proxy (Value 'Mutable (CallResult ty args)))
+      ty = valueType (Proxy :: Proxy (Value 'Operand (CallResult ty args)))
   ValuePure <$> nameInstruction ty instr
 
 call
@@ -59,7 +59,7 @@ call
    . CanCall ty args
   => Function cconv ty
   -> args
-  -> BasicBlock (Value 'Mutable (CallResult ty args))
+  -> BasicBlock (Value 'Operand (CallResult ty args))
 call = call_ False
 
 tailcall
@@ -67,5 +67,5 @@ tailcall
    . CanCall ty args
   => Function cconv ty
   -> args
-  -> BasicBlock (Value 'Mutable (CallResult ty args))
+  -> BasicBlock (Value 'Operand (CallResult ty args))
 tailcall = call_ True

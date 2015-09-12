@@ -56,13 +56,13 @@ functionCallingConv
   -> CC.CallingConvention
 functionCallingConv (Function _ cconv) = cconv
 
-getParameter :: (ParameterType ty n ~ a, KnownNat n) => proxy n -> FunctionDefinition ty (Value 'Mutable a)
+getParameter :: (ParameterType ty n ~ a, KnownNat n) => proxy n -> FunctionDefinition ty (Value 'Operand a)
 getParameter n = do
   params <- gets functionDefinitionParameters
   let AST.Parameter ty name _ = params !! fromIntegral (natVal n)
   return . ValuePure $ AST.LocalReference ty name
 
-tryGetParameter :: forall a ty . ValueOf a => Int -> FunctionDefinition ty (Maybe (Value 'Mutable a))
+tryGetParameter :: forall a ty . ValueOf a => Int -> FunctionDefinition ty (Maybe (Value 'Operand a))
 tryGetParameter n = do
   params <- gets functionDefinitionParameters
   return $ do

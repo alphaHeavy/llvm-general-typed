@@ -16,8 +16,8 @@ import LLVM.General.Typed.ValueOf (ValueOf, valueType)
 class FunctionType (a :: [*]) where
   functionType :: proxy a -> [AST.Type]
 
-instance (ValueOf (Value 'Mutable x), FunctionType xs) => FunctionType (x ': xs) where
-  functionType _ = valueType (Proxy :: Proxy (Value 'Mutable x)) : functionType (Proxy :: Proxy xs)
+instance (ValueOf (Value 'Operand x), FunctionType xs) => FunctionType (x ': xs) where
+  functionType _ = valueType (Proxy :: Proxy (Value 'Operand x)) : functionType (Proxy :: Proxy xs)
 
 instance FunctionType '[] where
   functionType _ = []

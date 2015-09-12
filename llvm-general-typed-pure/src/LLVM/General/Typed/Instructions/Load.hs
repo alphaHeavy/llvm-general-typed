@@ -17,11 +17,11 @@ import LLVM.General.Typed.ValueOf
 
 load
   :: forall a const
-   . ValueOf (Value 'Mutable a)
+   . ValueOf (Value 'Operand a)
   => Bool
   -> Value const (Ptr a)
-  -> BasicBlock (Value 'Mutable a)
+  -> BasicBlock (Value 'Operand a)
 load volatile value = do
   value' <- asOp value
-  let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
+  let ty = valueType (Proxy :: Proxy (Value 'Operand a))
   ValuePure <$> nameInstruction ty (AST.Load volatile value' Nothing 0 [])

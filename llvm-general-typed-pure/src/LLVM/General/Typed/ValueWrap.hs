@@ -34,11 +34,11 @@ class OperandWrap op where
   operandWrap :: ValueOf a => op -> Maybe (Value (OperandConstness op) a)
 
 instance OperandWrap AST.Operand where
-  type OperandConstness AST.Operand = 'Mutable
-  operandWrap :: forall a. ValueOf a => AST.Operand -> Maybe (Value 'Mutable a)
+  type OperandConstness AST.Operand = 'Operand
+  operandWrap :: forall a. ValueOf a => AST.Operand -> Maybe (Value 'Operand a)
   operandWrap op@(AST.LocalReference ty _)
     | valueType (Proxy :: Proxy a) == ty = Just (ValuePure op)
-  operandWrap (AST.ConstantOperand op) = ValueMutable <$> operandWrap op
+  operandWrap (AST.ConstantOperand op) = ValueWeakened <$> operandWrap op
   operandWrap _ = Nothing
 
 constantMatch :: AST.Type -> Constant.Constant -> Bool

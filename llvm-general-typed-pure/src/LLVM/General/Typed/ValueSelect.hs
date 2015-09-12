@@ -21,10 +21,10 @@ class ValueSelect (const :: Constness) (const' :: Constness) where
 instance ValueSelect 'Constant 'Constant where
   vselect f _ (ValueConstant v) = ValueConstant (f v)
 
-instance ValueSelect 'Constant 'Mutable where
+instance ValueSelect 'Constant 'Operand where
   vselect _ g (ValueConstant v) = ValueOperand (g (AST.ConstantOperand v))
 
-instance ValueSelect 'Mutable 'Mutable where
-  vselect f g (ValueMutable v) = vselect f g v
-  vselect _ g (ValuePure v)    = ValueOperand (g v)
-  vselect _ g (ValueOperand v) = ValueOperand (g =<< v)
+instance ValueSelect 'Operand 'Operand where
+  vselect f g (ValueWeakened v) = vselect f g v
+  vselect _ g (ValuePure v)     = ValueOperand (g v)
+  vselect _ g (ValueOperand v)  = ValueOperand (g =<< v)

@@ -29,7 +29,7 @@ invoke
   -> args
   -> Label (ReturnType ty)
   -> Label (ReturnType ty)
-  -> BasicBlock (Terminator (ReturnType ty) (Value 'Mutable (CallResult ty args)))
+  -> BasicBlock (Terminator (ReturnType ty) (Value 'Operand (CallResult ty args)))
 invoke function args (Label returnDest) (Label exceptionDest) = do
   let ValueConstant f = functionValue function
       f' = AST.ConstantOperand f

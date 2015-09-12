@@ -20,12 +20,12 @@ import LLVM.General.Typed.ValueOf
 
 alloca
   :: forall a .
-     ( ValueOf (Value 'Mutable a)
-     , KnownNat (ElementsOf (Value 'Mutable a)))
-  => BasicBlock (Value 'Mutable (Ptr a))
+     ( ValueOf (Value 'Operand a)
+     , KnownNat (ElementsOf (Value 'Operand a)))
+  => BasicBlock (Value 'Operand (Ptr a))
 alloca = do
-  let ty = valueType (Proxy :: Proxy (Value 'Mutable a))
-      ne = natVal (Proxy :: Proxy (ElementsOf (Value 'Mutable a)))
+  let ty = valueType (Proxy :: Proxy (Value 'Operand a))
+      ne = natVal (Proxy :: Proxy (ElementsOf (Value 'Operand a)))
   -- @TODO: the hardcoded 64 should probably be the target word size?
       inst = AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
   ValuePure <$> nameInstruction ty inst

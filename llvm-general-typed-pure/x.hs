@@ -41,7 +41,7 @@ foo = do
         x <- val `add` someLocal
         join $ condBr
           <$> cmp someLocal p0trunc
-          <*> basicBlock_ (ret <=< ext $ abs x * someLocal + mutable (val - signum 8))
+          <*> basicBlock_ (ret <=< ext $ abs x * someLocal + weaken (val - signum 8))
           <*> basicBlock_ (br entryBlock)
 
       return ()
