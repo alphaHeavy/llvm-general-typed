@@ -25,6 +25,12 @@ module LLVM.General.Typed.Instructions
   , mul
   , LLVM.General.Typed.Instructions.Div.div
   , LLVM.General.Typed.Instructions.Rem.rem
+  -- ** Specializations
+  , Add
+  , Sub
+  , Mul
+  , Div(DivConstraint)
+  , Rem(RemConstraint)
   -- ** Bitwise Binary Operation
   -- , shl
   -- , lshr
@@ -62,6 +68,8 @@ module LLVM.General.Typed.Instructions
   -- , ptrtoint
   -- , inttoptr
   , bitcast
+  -- ** Specializations
+  , Trunc
   -- , addrspacecast
   -- * Other Operations
   , undef

@@ -1,20 +1,16 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Instructions.Sub
-  ( CanSub
-  , Sub
+  ( Sub
   , sub
   ) where
 
 import Data.Proxy
-import GHC.Exts (Constraint)
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
 
@@ -66,12 +62,10 @@ instance Sub 'FloatingPointClass where
 instance Sub ('VectorClass 'FloatingPointClass) where
   vsub = fsub
 
-type family CanSub (a :: *) (b :: *) :: Constraint
-type instance CanSub a a = (Sub (ClassificationOf a), ValueOf a)
-
 sub
-  :: CanSub a a
-  => Value cx a
-  -> Value cy a
-  -> BasicBlock (Value (cx `Weakest` cy) a)
+  :: Sub (ClassificationOf a)
+  => ValueOf a
+  => Value cx a -- ^ First operand
+  -> Value cy a -- ^ Second operand
+  -> BasicBlock (Value (cx `Weakest` cy) a) -- ^ Result
 sub x y = vjoin $ vsub x y

@@ -1,4 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -7,13 +6,11 @@
 {-# LANGUAGE TypeOperators #-}
 
 module LLVM.General.Typed.Instructions.Extend
-  ( CanExtend
-  , ext
+  ( ext
   ) where
 
 import Data.Bits
 import Data.Proxy
-import GHC.Exts (Constraint)
 import GHC.TypeLits
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
@@ -24,14 +21,15 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
-type family CanExtend a b :: Constraint
-type instance CanExtend a b = (Bits a, ClassificationOf a ~ 'IntegerClass, ClassificationOf b ~ 'IntegerClass)
-
 ext
-  :: forall a b const . (CanExtend a b, BitsOf a + 1 <= BitsOf b)
+  :: forall a b const
+   . (BitsOf a + 1 <= BitsOf b)
+  => Bits a
+  => ClassificationOf a ~ 'IntegerClass
+  => ClassificationOf b ~ 'IntegerClass
   => ValueOf b
-  => Value const a
-  -> BasicBlock (Value const b)
+  => Value const a -- ^ Source value, must be narrower than the result
+  -> BasicBlock (Value const b) -- ^ Result
 ext = vmap1' f g where
   si = isSigned (undefined :: a)
   (cf, gf) = if si then (Constant.SExt, AST.SExt) else (Constant.ZExt, AST.ZExt)

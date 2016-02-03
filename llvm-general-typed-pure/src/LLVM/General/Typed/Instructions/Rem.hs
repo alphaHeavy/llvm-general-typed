@@ -1,4 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -6,11 +5,9 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Instructions.Rem
-  ( CanRem
-  , Rem
+  ( Rem(RemConstraint)
   , LLVM.General.Typed.Instructions.Rem.rem
   ) where
 
@@ -74,12 +71,11 @@ instance Rem ('VectorClass 'FloatingPointClass) where
 instance Rem 'FloatingPointClass where
   vrem = frem
 
-type family CanRem (a :: *) (b :: *) :: Constraint
-type instance CanRem a a = (Rem (ClassificationOf a), RemConstraint (ClassificationOf a) a, ValueOf a)
-
 rem
-  :: CanRem a a
-  => Value cx a
-  -> Value cy a
-  -> BasicBlock (Value (cx `Weakest` cy) a)
+  :: Rem (ClassificationOf a)
+  => RemConstraint (ClassificationOf a) a
+  => ValueOf a
+  => Value cx a -- ^ First operand
+  -> Value cy a -- ^ Second operand
+  -> BasicBlock (Value (cx `Weakest` cy) a) -- ^ Result
 rem x y = vjoin $ vrem x y

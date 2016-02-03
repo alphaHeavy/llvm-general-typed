@@ -1,20 +1,16 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Instructions.Mul
-  ( CanMul
-  , Mul
+  ( Mul
   , mul
   ) where
 
 import Data.Proxy
-import GHC.Exts (Constraint)
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
 
@@ -66,12 +62,10 @@ instance Mul 'FloatingPointClass where
 instance Mul ('VectorClass 'FloatingPointClass) where
   vmul = fmul
 
-type family CanMul (a :: *) (b :: *) :: Constraint
-type instance CanMul a a = (Mul (ClassificationOf a), ValueOf a)
-
 mul
-  :: CanMul a a
-  => Value cx a
-  -> Value cy a
-  -> BasicBlock (Value (cx `Weakest` cy) a)
+  :: Mul (ClassificationOf a)
+  => ValueOf a
+  => Value cx a -- ^ First operand
+  -> Value cy a -- ^ Second operand
+  -> BasicBlock (Value (cx `Weakest` cy) a) -- ^ Result
 mul x y = vjoin $ vmul x y

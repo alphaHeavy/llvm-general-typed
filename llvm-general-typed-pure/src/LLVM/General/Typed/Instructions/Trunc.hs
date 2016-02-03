@@ -1,4 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -8,8 +7,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 module LLVM.General.Typed.Instructions.Trunc
-  ( CanTrunc
-  , Trunc
+  ( Trunc
   , trunc
   ) where
 
@@ -61,10 +59,13 @@ instance Trunc 'FloatingPointClass where
     f v = Constant.FPTrunc v vt
     g v = nameInstruction vt $ AST.FPTrunc v vt []
 
-type CanTrunc a b = (ClassificationOf a ~ ClassificationOf b, Trunc (ClassificationOf b), ValueOf b)
-
+-- |
+-- Truncate a value.
 trunc
-  :: (CanTrunc a b, BitsOf b + 1 <= BitsOf a)
-  => Value const a
-  -> BasicBlock (Value const b)
+  :: (BitsOf b + 1 <= BitsOf a)
+  => ClassificationOf a ~ ClassificationOf b
+  => Trunc (ClassificationOf b)
+  => ValueOf b
+  => Value const a -- ^ Source value, must be wider than the result
+  -> BasicBlock (Value const b) -- ^ Result
 trunc = vtrunc

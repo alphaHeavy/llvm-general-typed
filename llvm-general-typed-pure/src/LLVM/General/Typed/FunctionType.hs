@@ -10,9 +10,11 @@ module LLVM.General.Typed.FunctionType where
 import Data.Proxy
 import qualified LLVM.General.AST as AST
 
-import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf (ValueOf, valueType)
 
+-- |
+-- Helper class to convert a type level list of types
+-- that represent a function to a list of LLVM types.
 class FunctionType (a :: [*]) where
   functionType :: proxy a -> [AST.Type]
 

@@ -29,6 +29,8 @@ import LLVM.General.Typed.FunctionType
 import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 
+-- |
+-- Attempt to lift an operand into a typed 'Value'
 class OperandWrap op where
   type OperandConstness op :: Constness
   operandWrap :: ValueOf a => op -> Maybe (Value (OperandConstness op) a)
@@ -41,6 +43,8 @@ instance OperandWrap AST.Operand where
   operandWrap (AST.ConstantOperand op) = ValueWeakened <$> operandWrap op
   operandWrap _ = Nothing
 
+-- |
+-- Test if a 'Constant' matches a given 'Type'
 constantMatch :: AST.Type -> Constant.Constant -> Bool
 constantMatch rep = go where
   go = \ case
@@ -95,14 +99,26 @@ instance OperandWrap Constant.Constant where
     guard $ constantMatch rep op
     return $ ValueConstant op
 
-functionWrap :: forall a cc . (KnownNat cc, FunctionType (ArgumentList a)) => AST.Global -> Maybe (Function ('CallingConv cc) a)
+-- |
+-- Attempt to convert a 'AST.Global' function pointer to a strongly typed 'Function'
+functionWrap
+  :: forall a cc . (KnownNat cc, FunctionType (ArgumentList a))
+  => AST.Global
+  -> Maybe (Function ('CallingConv cc) a)
 functionWrap AST.Function{..} = do
+  -- check that the requested calling convention matches the declaration
   let callingConvention' = reifyCallingConv (Proxy :: Proxy ('CallingConv cc))
   guard (callingConvention == callingConvention')
+
+  -- split the type signature into argument types and return type
   (ty', rty) <- splitFunctionTypes $ functionType (Proxy :: Proxy (ArgumentList a))
+
+  -- and test that these types match the declaration
   guard $ returnType == rty
   let pty = [ty | AST.Parameter ty _ _ <- fst parameters]
       fty = Type.FunctionType returnType pty (snd parameters)
   guard $ pty == ty'
+
+  -- global Functions are always constant
   return $ Function (ValueConstant (Constant.GlobalReference fty name)) callingConvention'
 functionWrap _ = Nothing

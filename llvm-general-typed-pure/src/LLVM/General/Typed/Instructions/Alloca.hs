@@ -19,10 +19,10 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 
 alloca
-  :: forall a .
-     ( ValueOf a
-     , KnownNat (ElementsOf a))
-  => BasicBlock (Value 'Operand (Ptr a))
+  :: forall a
+   . ValueOf a -- Inspect the runtime type
+  => KnownNat (ElementsOf a) -- Inspect the number of elements
+  => BasicBlock (Value 'Operand (Ptr a)) -- ^ An instance allocated on the stack
 alloca = do
   let ty = valueType (Proxy :: Proxy a)
       ne = natVal (Proxy :: Proxy (ElementsOf a))

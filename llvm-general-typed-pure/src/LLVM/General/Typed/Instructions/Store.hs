@@ -10,9 +10,9 @@ import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.Value
 
 store
-  :: Bool
-  -> Value cx (Ptr a)
-  -> Value cy a
+  :: Bool -- ^ Is this a volatile store?
+  -> Value cx (Ptr a) -- ^ Destination address
+  -> Value cy a -- ^ Source value
   -> BasicBlock ()
 store volatile address value = do
   address' <- asOp address

@@ -1,4 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -6,11 +5,9 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Instructions.Div
-  ( CanDiv
-  , Div
+  ( Div(DivConstraint)
   , LLVM.General.Typed.Instructions.Div.div
   ) where
 
@@ -75,12 +72,11 @@ instance Div 'FloatingPointClass where
 instance Div ('VectorClass 'FloatingPointClass) where
   vdiv = fdiv
 
-type family CanDiv (a :: *) (b :: *) :: Constraint
-type instance CanDiv a a = (Div (ClassificationOf a), DivConstraint (ClassificationOf a) a, ValueOf a)
-
 div
-  :: CanDiv a a
-  => Value cx a
-  -> Value cy a
-  -> BasicBlock (Value (cx `Weakest` cy) a)
+  :: Div (ClassificationOf a)
+  => DivConstraint (ClassificationOf a) a
+  => ValueOf a
+  => Value cx a -- ^ First operand
+  -> Value cy a -- ^ Second operand
+  -> BasicBlock (Value (cx `Weakest` cy) a) -- ^ Result
 div x y = vjoin $ vdiv x y
