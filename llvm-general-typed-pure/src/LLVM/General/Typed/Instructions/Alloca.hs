@@ -1,7 +1,10 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
+#include "MachDeps.h"
 
 module LLVM.General.Typed.Instructions.Alloca
   ( alloca
@@ -26,6 +29,5 @@ alloca
 alloca = do
   let ty = valueType (Proxy :: Proxy a)
       ne = natVal (Proxy :: Proxy (ElementsOf a))
-  -- @TODO: the hardcoded 64 should probably be the target word size?
-      inst = AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int 64 ne))) 0 []
+      inst = AST.Alloca ty (Just (AST.ConstantOperand (Constant.Int WORD_SIZE_IN_BITS ne))) 0 []
   ValuePure <$> nameInstruction ty inst
