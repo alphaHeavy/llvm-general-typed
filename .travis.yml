@@ -27,7 +27,7 @@ script:
 matrix:
   fast_finish: true
   include:
-  - env: GHCVER=7.10.3 CABALVER=1.22 STACK_SOLVER=YES
+  - env: GHCVER=7.10.3 CABALVER=1.22 STACK_SOLVER=NO
     addons:
       apt:
         sources:
@@ -36,7 +36,7 @@ matrix:
         - ghc-7.10.3
         - cabal-install-1.22
         - libgmp-dev
-    compiler: ! ': # ghc-7.10.2  YES'
+    compiler: ! ': # ghc-7.10.3  NO'
   - env: GHCVER=head CABALVER=1.22 STACK_SOLVER=YES
     addons:
       apt:
