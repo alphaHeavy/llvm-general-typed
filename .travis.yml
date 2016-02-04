@@ -7,7 +7,7 @@ before_install:
 - export PATH=~/.local/bin:$PATH
 - if [ ! -e ~/.local/bin/stack ]; then mkdir -p ~/.local/bin; travis_retry curl -L
   https://github.com/commercialhaskell/stack/releases/download/v1.0.2/stack-1.0.2-linux-x86_64.tar.gz
-  | tar xz -C ~/.local/bin; fi
+  | tar --strip-components=1 -xz -C ~/.local/bin stack-1.0.2-linux-x86_64/stack; fi
 - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo
   '?')]"
 - stack +RTS -N2 -RTS --version
@@ -21,6 +21,7 @@ install:
   --only-dependencies; fi; if [ ! -d $HOME/.stack-work-cache ]; then echo "snapshotting
   package-db to build-cache"; cp -a .stack-work $HOME/.stack-work-cache; cp -a installplan.txt
   $HOME/.stack-work-cache/installplan.txt; fi;
+- hash -r
 script:
 - stack --no-terminal --skip-ghc-check build --test
 - stack --no-terminal --skip-ghc-check sdist
