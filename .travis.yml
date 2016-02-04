@@ -6,7 +6,7 @@ before_install:
 - if [ -n "$CABALVER" ]; then export PATH=/opt/cabal/$CABALVER/bin:$PATH; fi
 - export PATH=~/.local/bin:$PATH
 - if [ ! -e ~/.local/bin/stack ]; then mkdir -p ~/.local/bin; travis_retry curl -L
-  https://github.com/commercialhaskell/stack/releases/download/v0.1.4.0/stack-0.1.4.0-x86_64-linux.tar.gz
+  https://github.com/commercialhaskell/stack/releases/download/v1.0.2/stack-1.0.2-linux-x86_64.tar.gz
   | tar xz -C ~/.local/bin; fi
 - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo
   '?')]"
@@ -27,13 +27,13 @@ script:
 matrix:
   fast_finish: true
   include:
-  - env: GHCVER=7.10.2 CABALVER=1.22 STACK_SOLVER=YES
+  - env: GHCVER=7.10.3 CABALVER=1.22 STACK_SOLVER=YES
     addons:
       apt:
         sources:
         - hvr-ghc
         packages:
-        - ghc-7.10.2
+        - ghc-7.10.3
         - cabal-install-1.22
         - libgmp-dev
     compiler: ! ': # ghc-7.10.2  YES'
