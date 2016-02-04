@@ -2,6 +2,7 @@ module LLVM.General.Typed
   (
   -- * Modules
     Module
+  , Globals
   , namedModule
   , evalModule
   , namedFunction

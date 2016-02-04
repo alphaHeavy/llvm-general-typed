@@ -57,7 +57,8 @@ module LLVM.General.Typed.Instructions
   , getElementPtr
   , getElementPtr0
   , tryGetElementPtr
-  -- **** Utility
+  , GetElementIndex
+  , GetElementPtrConstness
   , GetElementPtrType
   , Index
   , InvalidGetElementPtrIndexBoundsStruct
@@ -124,26 +125,31 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
+-- |
+-- Conditionally branch to a target.
 condBr
-  :: Value const Bool
-  -> Label rty
-  -> Label rty
+  :: Value const Bool -- ^ Conditional
+  -> Label rty -- ^ Branch target if the conditional is 'True'
+  -> Label rty -- ^ Branch target if the conditional is 'False'
   -> BasicBlock (Terminator rty ())
 condBr condition (Label trueDest) (Label falseDest) = do
   conditionOp <- asOp condition
   setTerminator $ AST.CondBr conditionOp trueDest falseDest []
   return $ Terminator ()
 
+-- |
+-- Unconditionally branch to a target.
 br :: Label rty -> BasicBlock (Terminator rty ())
 br (Label dest) = do
   setTerminator $ AST.Br dest []
   return $ Terminator ()
 
+-- |
 switch
   :: (ClassificationOf a ~ 'IntegerClass)
-  => Value const a
-  -> Label rty -- default
-  -> [(Value 'Constant a, Label rty)]
+  => Value const a -- ^ Branch index
+  -> Label rty -- ^ Default branch target
+  -> [(Value 'Constant a, Label rty)] -- ^ List of index and branch target pairs
   -> BasicBlock (Terminator rty ())
 switch value (Label defaultDest) dests = do
   valueOp <- asOp value

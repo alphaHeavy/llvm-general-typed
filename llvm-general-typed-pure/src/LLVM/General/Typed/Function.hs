@@ -71,7 +71,7 @@ functionCallingConv (Function _ cconv) = cconv
 -- the function type list and asserting type equivalence.
 getParameter
   :: (ParameterType ty n ~ a, KnownNat n)
-  => proxy n
+  => proxy n -- ^ An index witness such as @ 'Proxy' :: 'Proxy' 0 @
   -> FunctionDefinition ty (Value 'Operand a)
 getParameter n = do
   params <- gets functionDefinitionParameters
@@ -84,8 +84,9 @@ getParameter n = do
 -- checks at runtine and will fail if the types are not equivalent
 -- or if the requested index is out of bounds.
 tryGetParameter
-  :: forall a ty . ValueOf a
-  => Int
+  :: forall a ty
+   . ValueOf a
+  => Int -- ^ The parameter index
   -> FunctionDefinition ty (Maybe (Value 'Operand a))
 tryGetParameter n = do
   params <- gets functionDefinitionParameters

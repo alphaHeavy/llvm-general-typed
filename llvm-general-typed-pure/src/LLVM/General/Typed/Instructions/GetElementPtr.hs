@@ -17,6 +17,7 @@ module LLVM.General.Typed.Instructions.GetElementPtr
   , tryGetElementPtr
   , unsafeGetElementPtr
   , ElementIndex
+  , GetElementPtrConstness
   , GetElementIndex
   , GetElementPtrType
   , Index(..)
@@ -72,7 +73,9 @@ class GetElementIndex a i where
 -- an instance of 'Typeable'. Use this function with care.
 unsafeGetElementPtr
   :: forall a b const i
-   . (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i), ValueOf b)
+   . GetElementIndex a i
+  => ValueSelect const (GetElementPtrConstness const i)
+  => ValueOf b
   => Bounds -- ^ Sum of all index 'Bounds'
   -> Value const a
   -> i
