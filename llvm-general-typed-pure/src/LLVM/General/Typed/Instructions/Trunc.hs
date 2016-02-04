@@ -62,10 +62,10 @@ instance Trunc 'FloatingPointClass where
 -- |
 -- Truncate a value.
 trunc
-  :: (BitsOf b + 1 <= BitsOf a)
+  :: (ValueOf a, ValueOf b)
+  => (BitsOf b + 1 <= BitsOf a)
   => ClassificationOf a ~ ClassificationOf b
   => Trunc (ClassificationOf b)
-  => ValueOf b
   => Value const a -- ^ Source value, must be wider than the result
   -> BasicBlock (Value const b) -- ^ Result
 trunc = vtrunc

@@ -22,22 +22,22 @@ import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
 isub
-  :: forall a cx cy
+  :: forall a const'a const'b
    . ValueOf a
-  => Value cx a
-  -> Value cy a
-  -> Value (cx `Weakest` cy) a
+  => Value const'a a
+  -> Value const'b a
+  -> Value (const'a `Weakest` const'b) a
 isub = vmap2 f g where
   f = Constant.Sub False False
   ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.Sub False False x y []
 
 fsub
-  :: forall a cx cy
+  :: forall a const'a const'b
    . ValueOf a
-  => Value cx a
-  -> Value cy a
-  -> Value (cx `Weakest` cy) a
+  => Value const'a a
+  -> Value const'b a
+  -> Value (const'a `Weakest` const'b) a
 fsub = vmap2 f g where
   f = Constant.FSub
   ty = valueType (Proxy :: Proxy a)
@@ -46,9 +46,9 @@ fsub = vmap2 f g where
 class Sub (classification :: Classification) where
   vsub
     :: (ClassificationOf a ~ classification, ValueOf a)
-    => Value cx a
-    -> Value cy a
-    -> Value (cx `Weakest` cy) a
+    => Value const'a a
+    -> Value const'b a
+    -> Value (const'a `Weakest` const'b) a
 
 instance Sub 'IntegerClass where
   vsub = isub
@@ -63,9 +63,9 @@ instance Sub ('VectorClass 'FloatingPointClass) where
   vsub = fsub
 
 sub
-  :: Sub (ClassificationOf a)
-  => ValueOf a
-  => Value cx a -- ^ First operand
-  -> Value cy a -- ^ Second operand
-  -> BasicBlock (Value (cx `Weakest` cy) a) -- ^ Result
+  :: ValueOf a
+  => Sub (ClassificationOf a)
+  => Value const'a a -- ^ First operand
+  -> Value const'b a -- ^ Second operand
+  -> BasicBlock (Value (const'a `Weakest` const'b) a) -- ^ Result
 sub x y = vjoin $ vsub x y

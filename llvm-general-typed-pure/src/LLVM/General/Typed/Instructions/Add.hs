@@ -22,22 +22,22 @@ import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
 iadd
-  :: forall a cx cy
+  :: forall a const'a const'b
    . ValueOf a
-  => Value cx a
-  -> Value cy a
-  -> Value (cx `Weakest` cy) a
+  => Value const'a a
+  -> Value const'b a
+  -> Value (const'a `Weakest` const'b) a
 iadd = vmap2 f g where
   f = Constant.Add False False
   ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.Add False False x y []
 
 fadd
-  :: forall a cx cy
+  :: forall a const'a const'b
    . ValueOf a
-  => Value cx a
-  -> Value cy a
-  -> Value (cx `Weakest` cy) a
+  => Value const'a a
+  -> Value const'b a
+  -> Value (const'a `Weakest` const'b) a
 fadd = vmap2 f g where
   f = Constant.FAdd
   ty = valueType (Proxy :: Proxy a)
@@ -46,9 +46,9 @@ fadd = vmap2 f g where
 class Add (classification :: Classification) where
   vadd
     :: (ClassificationOf a ~ classification, ValueOf a)
-    => Value cx a
-    -> Value cy a
-    -> Value (cx `Weakest` cy) a
+    => Value const'a a
+    -> Value const'b a
+    -> Value (const'a `Weakest` const'b) a
 
 instance Add 'IntegerClass where
   vadd = iadd
@@ -63,9 +63,9 @@ instance Add ('VectorClass 'FloatingPointClass) where
   vadd = fadd
 
 add
-  :: Add (ClassificationOf a)
-  => ValueOf a
-  => Value cx a -- ^ First operand
-  -> Value cy a -- ^ Second operand
-  -> BasicBlock (Value (cx `Weakest` cy) a) -- ^ Result
+  :: ValueOf a
+  => Add (ClassificationOf a)
+  => Value const'a a -- ^ First operand
+  -> Value const'b a -- ^ Second operand
+  -> BasicBlock (Value (const'a `Weakest` const'b) a) -- ^ Result
 add x y = vjoin $ vadd x y

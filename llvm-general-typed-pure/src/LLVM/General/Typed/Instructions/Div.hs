@@ -1,19 +1,18 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module LLVM.General.Typed.Instructions.Div
-  ( Div(DivConstraint)
+  ( Div
   , LLVM.General.Typed.Instructions.Div.div
   ) where
 
-import Data.Bits
 import Data.Proxy
-import GHC.Exts (Constraint)
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
 
@@ -25,58 +24,52 @@ import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.VMap
 
 idiv
-  :: forall cx cy a
-   . (Bits a, ValueOf a)
-  => Value cx a
-  -> Value cy a
-  -> Value (cx `Weakest` cy) a
+  :: forall const'a const'b a
+   . IntegerOf a
+  => Value const'a a
+  -> Value const'b a
+  -> Value (const'a `Weakest` const'b) a
 idiv = vmap2 f g where
-  si = isSigned (undefined :: a)
+  si = isSignedInt (Proxy :: Proxy a)
   (cf, gf) = if si then (Constant.SDiv, AST.SDiv) else (Constant.UDiv, AST.UDiv)
   f = cf False
   ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ gf False x y []
 
 fdiv
-  :: forall cx cy a
+  :: forall const'a const'b a
    . ValueOf a
-  => Value cx a
-  -> Value cy a
-  -> Value (cx `Weakest` cy) a
+  => Value const'a a
+  -> Value const'b a
+  -> Value (const'a `Weakest` const'b) a
 fdiv = vmap2 f g where
   f = Constant.FDiv
   ty = valueType (Proxy :: Proxy a)
   g x y = nameInstruction ty $ AST.FDiv AST.NoFastMathFlags x y []
 
-class Div (classification :: Classification) where
-  -- nasty :(
-  type DivConstraint classification a :: Constraint
-  type DivConstraint classification a = ()
+class Div (classification :: Classification) a where
   vdiv
-    :: (ClassificationOf a ~ classification, DivConstraint classification a, ValueOf a)
-    => Value cx a
-    -> Value cy a
-    -> Value (cx `Weakest` cy) a
+    :: (ClassificationOf a ~ classification, ValueOf a)
+    => Value const'a a
+    -> Value const'b a
+    -> Value (const'a `Weakest` const'b) a
 
-instance Div 'IntegerClass where
-  type DivConstraint 'IntegerClass a = Bits a
+instance IntegerOf a => Div 'IntegerClass a where
   vdiv = idiv
 
-instance Div ('VectorClass 'IntegerClass) where
-  type DivConstraint ('VectorClass 'IntegerClass) a = Bits a
+instance IntegerOf a => Div ('VectorClass 'IntegerClass) a where
   vdiv = idiv
 
-instance Div 'FloatingPointClass where
+instance Div 'FloatingPointClass a where
   vdiv = fdiv
 
-instance Div ('VectorClass 'FloatingPointClass) where
+instance Div ('VectorClass 'FloatingPointClass) a where
   vdiv = fdiv
 
 div
-  :: Div (ClassificationOf a)
-  => DivConstraint (ClassificationOf a) a
-  => ValueOf a
-  => Value cx a -- ^ First operand
-  -> Value cy a -- ^ Second operand
-  -> BasicBlock (Value (cx `Weakest` cy) a) -- ^ Result
+  :: ValueOf a
+  => Div (ClassificationOf a) a
+  => Value const'a a -- ^ First operand
+  -> Value const'b a -- ^ Second operand
+  -> BasicBlock (Value (const'a `Weakest` const'b) a) -- ^ Result
 div x y = vjoin $ vdiv x y

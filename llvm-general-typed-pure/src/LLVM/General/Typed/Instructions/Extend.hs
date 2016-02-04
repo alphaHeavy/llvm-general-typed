@@ -44,6 +44,8 @@ instance (IntegerOf a, IntegerOf b, IsSigned a ~ IsSigned b) => Ext 'IntegerClas
     f v = cf v vt
     g v = nameInstruction vt $ gf v vt []
 
+-- |
+-- Extend a value and preserve its sign.
 ext
   :: forall a b const
    . (ValueOf a, ValueOf b)

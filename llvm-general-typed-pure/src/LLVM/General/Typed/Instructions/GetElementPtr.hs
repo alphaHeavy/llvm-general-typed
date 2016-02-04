@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module LLVM.General.Typed.Instructions.GetElementPtr
-  ( InBounds(..)
+  ( Bounds(..)
   , getElementPtr
   , getElementPtr0
   , GetElementPtrTest(..)
@@ -26,6 +26,8 @@ module LLVM.General.Typed.Instructions.GetElementPtr
 
 import Control.Monad.RWS.Lazy
 import Data.Proxy
+import Data.Semigroup (Semigroup)
+import qualified Data.Semigroup as Semigroup
 import Data.Void
 import Foreign.Ptr (Ptr)
 import GHC.Generics
@@ -40,10 +42,14 @@ import LLVM.General.Typed.ValueJoin
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.ValueSelect
 
-data InBounds
+data Bounds
   = InBounds
   | OutOfBounds
     deriving (Eq, Ord, Show)
+
+instance Semigroup Bounds where
+  InBounds <> InBounds = InBounds
+  _        <> _        = OutOfBounds
 
 data ElementIndex
   = ConstantElementIndex [Constant.Constant]
@@ -67,7 +73,7 @@ class GetElementIndex a i where
 unsafeGetElementPtr
   :: forall a b const i
    . (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i), ValueOf b)
-  => InBounds
+  => Bounds -- ^ Sum of all index 'Bounds'
   -> Value const a
   -> i
   -> BasicBlock (Value (GetElementPtrConstness const i) b)
@@ -93,8 +99,10 @@ data GetElementPtrTest a
 -- Note: this is currently not implemented and always returns
 -- 'GetElementPtrTypeUnknown' even when the types match.
 tryGetElementPtr
-  :: (GetElementIndex a i, ValueSelect const (GetElementPtrConstness const i), ValueOf b)
-  => InBounds
+  :: ValueOf b
+  => ValueSelect const (GetElementPtrConstness const i)
+  => GetElementIndex a i
+  => Bounds -- ^ Sum of all index 'Bounds'
   -> Value const a
   -> i
   -> BasicBlock (GetElementPtrTest (Value (GetElementPtrConstness const i) b))
@@ -223,8 +231,10 @@ instance (Generic idx, GGetElementIndex a (Rep idx)) => GetElementIndex a (Index
 -- @
 getElementPtr
   :: forall a const index
-   . (GetElementIndex (Ptr a) index, ValueSelect const (GetElementPtrConstness const index), ValueOf (GetElementPtrType (Ptr a) index))
-  => InBounds
+   . ValueOf (GetElementPtrType (Ptr a) index)
+  => ValueSelect const (GetElementPtrConstness const index)
+  => GetElementIndex (Ptr a) index
+  => Bounds -- ^ Sum of all index 'Bounds'
   -> Value const (Ptr a)
   -> index
   -> BasicBlock (Value (GetElementPtrConstness const index) (Ptr (GetElementPtrType (Ptr a) index)))
@@ -232,10 +242,14 @@ getElementPtr = unsafeGetElementPtr
 
 type Index0 index = Index (Proxy 0, index)
 
+-- |
+--
 getElementPtr0
   :: forall a const index
-   . (GetElementIndex a index, ValueSelect const (GetElementPtrConstness const (Index0 index)), (ValueOf (GetElementPtrType a index)))
-  => InBounds
+   . ValueOf (GetElementPtrType a index)
+  => ValueSelect const (GetElementPtrConstness const (Index0 index))
+  => GetElementIndex a index
+  => Bounds -- ^ Sum of all index 'Bounds'
   -> Value const (Ptr a)
   -> index
   -> BasicBlock (Value (GetElementPtrConstness const (Index0 index)) (Ptr (GetElementPtrType (Ptr a) (Index0 index))))

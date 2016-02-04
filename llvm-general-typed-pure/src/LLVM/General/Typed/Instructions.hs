@@ -29,8 +29,8 @@ module LLVM.General.Typed.Instructions
   , Add
   , Sub
   , Mul
-  , Div(DivConstraint)
-  , Rem(RemConstraint)
+  , Div
+  , Rem
   -- ** Bitwise Binary Operation
   -- , shl
   -- , lshr
@@ -53,9 +53,10 @@ module LLVM.General.Typed.Instructions
   -- , cmpxchg
   -- , atomicrmw
   -- *** GetElementPtr
-  , InBounds(..)
+  , Bounds(..)
   , getElementPtr
   , getElementPtr0
+  , tryGetElementPtr
   -- **** Utility
   , GetElementPtrType
   , Index
@@ -78,7 +79,7 @@ module LLVM.General.Typed.Instructions
   , icmp
   , fcmp
   , Cmp(..)
-  -- *** asdf
+  -- *** Value selection
   , Phi(..)
   , select
   -- *** Function invocation
@@ -165,42 +166,51 @@ unreachable = do
   setTerminator $ AST.Unreachable []
   return $ Terminator ()
 
+-- |
+-- An undefined value of any type.
 undef
-  :: forall a .
-     ValueOf a
-  => BasicBlock (Value 'Constant a)
+  :: forall a
+   . ValueOf a
+  => BasicBlock (Value 'Constant a) -- ^ Result
 undef = do
   let val = Constant.Undef $ valueType (Proxy :: Proxy a)
   return $ ValueConstant val
 
+-- |
+-- Compare two integers according to a predicate.
 icmp
   :: ClassificationOf a ~ 'IntegerClass
   => IntegerPredicate.IntegerPredicate
-  -> Value cx a
-  -> Value cy a
-  -> BasicBlock (Value (cx `Weakest` cy) Bool)
+  -> Value const'a a -- ^ First operand
+  -> Value const'b a -- ^ Second operand
+  -> BasicBlock (Value (const'a `Weakest` const'b) Bool) -- ^ Result
 icmp p = vmap2' f g where
   f = Constant.ICmp p
   ty = valueType (Proxy :: Proxy Bool)
   g x y = nameInstruction ty $ AST.ICmp p x y []
 
+-- |
+-- Compare two floats according to a predicate.
 fcmp
   :: ClassificationOf a ~ 'FloatingPointClass
   => FloatingPointPredicate.FloatingPointPredicate
-  -> Value cx a
-  -> Value cy a
-  -> BasicBlock (Value (cx `Weakest` cy) Bool)
+  -> Value const'a a -- ^ First operand
+  -> Value const'b a -- ^ Second operand
+  -> BasicBlock (Value (const'a `Weakest` const'b) Bool) -- ^ Result
 fcmp p = vmap2' f g where
   f = Constant.FCmp p
   ty = valueType (Proxy :: Proxy Bool)
   g x y = nameInstruction ty $ AST.FCmp p x y []
 
+-- |
+-- An incomplete type agnostic comparator.
+-- Currently only tests for value equality.
 class Cmp (classification :: Classification) where
   cmp
     :: (ClassificationOf a ~ classification)
-    => Value cx a
-    -> Value cy a
-    -> BasicBlock (Value (cx `Weakest` cy) Bool)
+    => Value const'a a -- ^ First operand
+    -> Value const'b a -- ^ Second operand
+    -> BasicBlock (Value (const'a `Weakest` const'b) Bool) -- ^ Result
 
 instance Cmp 'IntegerClass where
   cmp = vmap2' f g where
@@ -214,7 +224,9 @@ instance Cmp 'FloatingPointClass where
     ty = valueType (Proxy :: Proxy Bool)
     g x y = nameInstruction ty $ AST.FCmp FloatingPointPredicate.OEQ x y []
 
-fence :: AST.Atomicity -> BasicBlock ()
+fence
+  :: AST.Atomicity -- ^ Atomicity ordering constraint
+  -> BasicBlock ()
 fence atomicity = do
   let instr = AST.Fence atomicity []
   tell [AST.Do instr]

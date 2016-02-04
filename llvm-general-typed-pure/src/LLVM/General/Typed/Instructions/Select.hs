@@ -16,17 +16,15 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
--- the condition constness must match the result constness. this implies that
--- if both true and false values are constant the switch condition must also be
--- a constant. if you want a constant condition but mutable values (for some reason...)
--- just wrap the condition with 'mutable'
+-- |
+-- Select one of two values, depending on a Boolean condition.
 select
   :: forall a cc ct cf
    . ValueOf a
-  => Value cc Bool
-  -> Value ct a
-  -> Value cf a
-  -> BasicBlock (Value (cc `Weakest` ct `Weakest` cf) a)
+  => Value cc Bool -- ^ Condition
+  -> Value ct a -- ^ First operand
+  -> Value cf a -- ^ Second operand
+  -> BasicBlock (Value (cc `Weakest` ct `Weakest` cf) a) -- ^ Result
 select = vmap3' f g where
   f = Constant.Select
   ty = valueType (Proxy :: Proxy a)

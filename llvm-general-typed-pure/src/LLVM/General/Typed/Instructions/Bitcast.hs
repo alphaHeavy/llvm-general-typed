@@ -17,12 +17,14 @@ import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap
 
+-- |
+-- Unsafely convert between two types of equal size.
 bitcast
-  :: forall a b const .
-     ( BitsOf a ~ BitsOf b
-     , ValueOf b)
-  => Value const a
-  -> BasicBlock (Value const b)
+  :: forall a b const
+   . (ValueOf a, ValueOf b)
+  => (BitsOf a ~ BitsOf b)
+  => Value const a -- ^ Source value
+  -> BasicBlock (Value const b) -- ^ Result
 bitcast = vmap1' f g where
   vt = valueType (Proxy :: Proxy b)
   f v = Constant.BitCast v vt

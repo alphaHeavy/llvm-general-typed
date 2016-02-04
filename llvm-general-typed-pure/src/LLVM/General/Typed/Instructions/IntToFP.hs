@@ -6,7 +6,6 @@ module LLVM.General.Typed.Instructions.IntToFP
   ( inttofp
   ) where
 
-import Data.Bits
 import Data.Proxy
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as Constant
@@ -21,14 +20,13 @@ import LLVM.General.Typed.VMap
 -- Convert an integer to a floating point value.
 inttofp
   :: forall a b const
-   . Bits a
+   . (IntegerOf a, ValueOf b)
   => ClassificationOf a ~ 'IntegerClass
   => ClassificationOf b ~ 'FloatingPointClass
-  => ValueOf b
-  => Value const a -- ^ Source value, must be an 'IntegerClass'
-  -> BasicBlock (Value const b) -- ^ Converted value must be a 'FloatingPointClass'
+  => Value const a -- ^ Source value must be of the 'IntegerClass'
+  -> BasicBlock (Value const b) -- ^ Result must be of the 'FloatingPointClass'
 inttofp = vmap1' f g where
-  si = isSigned (undefined :: a)
+  si = isSignedInt (Proxy :: Proxy a)
   (cf, gf) = if si then (Constant.SIToFP, AST.SIToFP) else (Constant.UIToFP, AST.UIToFP)
   vt = valueType (Proxy :: Proxy b)
   f v = cf v vt
