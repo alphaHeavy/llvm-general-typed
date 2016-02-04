@@ -70,6 +70,7 @@ module LLVM.General.Typed.Instructions
   , bitcast
   -- ** Specializations
   , Trunc
+  , Ext
   -- , addrspacecast
   -- * Other Operations
   , undef

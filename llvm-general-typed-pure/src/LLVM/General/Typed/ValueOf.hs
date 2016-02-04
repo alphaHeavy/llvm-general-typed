@@ -13,6 +13,7 @@ module LLVM.General.Typed.ValueOf
   ( Classification(..)
   , ValueOf(..)
   , FieldTypes
+  , IntegerOf(..)
   ) where
 
 import Data.Int
@@ -58,6 +59,47 @@ class ValueOf (a :: *) where
 
   valueType :: proxy a -> AST.Type
 
+  valueOf :: FromConstant const => a -> Value (const :: Constness) a
+
+class ValueOf a => IntegerOf (a :: *) where
+  type IsSigned a :: Bool
+  isSignedInt :: proxy a -> Bool
+
+instance IntegerOf Int8 where
+  type IsSigned Int8 = 'True
+  isSignedInt _ = True
+
+instance IntegerOf Int16 where
+  type IsSigned Int16 = 'True
+  isSignedInt _ = True
+
+instance IntegerOf Int32 where
+  type IsSigned Int32 = 'True
+  isSignedInt _ = True
+
+instance IntegerOf Int64 where
+  type IsSigned Int64 = 'True
+  isSignedInt _ = True
+
+instance IntegerOf Word8 where
+  type IsSigned Word8 = 'False
+  isSignedInt _ = False
+
+instance IntegerOf Word16 where
+  type IsSigned Word16 = 'False
+  isSignedInt _ = False
+
+instance IntegerOf Word32 where
+  type IsSigned Word32 = 'False
+  isSignedInt _ = False
+
+instance IntegerOf Word64 where
+  type IsSigned Word64 = 'False
+  isSignedInt _ = False
+
+instance (IntegerOf a, KnownNat n) => IntegerOf (Array n a) where
+  type IsSigned (Array n a) = IsSigned a
+  isSignedInt _ = isSignedInt (Proxy :: Proxy a)
 
 instance ValueOf () where
   type BytesOf () = 0
