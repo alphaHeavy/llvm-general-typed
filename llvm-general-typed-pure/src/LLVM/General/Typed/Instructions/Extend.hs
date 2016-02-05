@@ -19,6 +19,7 @@ import qualified LLVM.General.AST.Constant as Constant
 
 import LLVM.General.Typed.BasicBlock
 import LLVM.General.Typed.FreshName
+import LLVM.General.Typed.IntegerOf
 import LLVM.General.Typed.Value
 import LLVM.General.Typed.ValueOf
 import LLVM.General.Typed.VMap

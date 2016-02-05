@@ -35,6 +35,7 @@ library
     LLVM.General.Typed.FreshName
     LLVM.General.Typed.Function
     LLVM.General.Typed.FunctionDefinition
+    LLVM.General.Typed.IntegerOf
     LLVM.General.Typed.Instructions
     LLVM.General.Typed.Module
     LLVM.General.Typed.Num
